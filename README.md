@@ -9,34 +9,46 @@ O **LabControl** é uma plataforma institucional para controle de acervo, biosse
 O sistema possui controle de acesso baseado em papéis para evitar duplicidade de funções e garantir integridade nos registros:
 
 ```mermaid
-graph TD
-    classDef admin fill:#f3e8ff,stroke:#9333ea,stroke-width:2px,color:#581c87;
-    classDef recep fill:#e0f2fe,stroke:#0284c7,stroke-width:2px,color:#075985;
-    classDef student fill:#dcfce7,stroke:#16a34a,stroke-width:2px,color:#166534;
-
+flowchart TD
     subgraph ADM ["Administrador / Coordenação"]
-        A1[Painel Geral Executivo]
-        A2[Gestão de Acadêmicos e GRRs]
-        A3[Inventário Geral do Acervo]
-        A4[Relatórios & Auditoria Sanitária XLSX]
-        A5[Parâmetros de Biossegurança]
+        A1["Painel Geral Executivo"]
+        A2["Gestão de Acadêmicos e GRRs"]
+        A3["Inventário Geral do Acervo"]
+        A4["Relatórios e Auditoria Sanitária XLSX"]
+        A5["Parâmetros de Biossegurança"]
     end
-    class ADM,A1,A2,A3,A4,A5 admin;
 
     subgraph BALCAO ["Atendente de Balcão / Almoxarifado"]
-        B1[Almoxarifado & Balcão de Prontas]
-        B2[Terminal Scanner / Bipagem]
-        B3[Protocolo de Retirada com GRR]
-        B4[Conferência e Devolução]
+        B1["Almoxarifado e Balcão de Prontas"]
+        B2["Terminal Scanner / Bipagem"]
+        B3["Protocolo de Retirada com GRR"]
+        B4["Conferência e Devolução"]
     end
-    class BALCAO,B1,B2,B3,B4 recep;
 
     subgraph ALUNO ["Acadêmico de Odontologia"]
-        S1[Minhas Marmitas em Custódia]
-        S2[Marmitas Prontas para Retirada]
-        S3[Alertas de Vencimento e Devolução]
+        S1["Minhas Marmitas em Custódia"]
+        S2["Marmitas Prontas para Retirada"]
+        S3["Alertas de Vencimento e Devolução"]
     end
-    class ALUNO,S1,S2,S3 student;
+
+    style ADM fill:#faf5ff,stroke:#9333ea,stroke-width:2px
+    style BALCAO fill:#f0f9ff,stroke:#0284c7,stroke-width:2px
+    style ALUNO fill:#f0fdf4,stroke:#16a34a,stroke-width:2px
+
+    style A1 fill:#ffffff,stroke:#c084fc,stroke-width:1px
+    style A2 fill:#ffffff,stroke:#c084fc,stroke-width:1px
+    style A3 fill:#ffffff,stroke:#c084fc,stroke-width:1px
+    style A4 fill:#ffffff,stroke:#c084fc,stroke-width:1px
+    style A5 fill:#ffffff,stroke:#c084fc,stroke-width:1px
+
+    style B1 fill:#ffffff,stroke:#38bdf8,stroke-width:1px
+    style B2 fill:#ffffff,stroke:#38bdf8,stroke-width:1px
+    style B3 fill:#ffffff,stroke:#38bdf8,stroke-width:1px
+    style B4 fill:#ffffff,stroke:#38bdf8,stroke-width:1px
+
+    style S1 fill:#ffffff,stroke:#4ade80,stroke-width:1px
+    style S2 fill:#ffffff,stroke:#4ade80,stroke-width:1px
+    style S3 fill:#ffffff,stroke:#4ade80,stroke-width:1px
 ```
 
 ### Matriz de Responsabilidades
@@ -51,7 +63,7 @@ graph TD
 
 ## 2. Ciclo de Vida da Marmita Odontológica
 
-Toda marmita cirúrgica transita por estados bem definidos para garantir a esterilidade dos instrumentais e a segurança do paciente:
+Toda marmita cirúrgica transita por etapas bem definidas para garantir a esterilidade dos instrumentais e a segurança do paciente:
 
 ```mermaid
 stateDiagram-v2
@@ -59,19 +71,14 @@ stateDiagram-v2
     Expurgado --> Em_Lavagem: Limpeza Enzimática e Ultrassônica
     Em_Lavagem --> Secagem_Embalagem: Inspeção Visual e Grau Cirúrgico
     Secagem_Embalagem --> Na_Autoclave: Selagem com Integrador Classe 5
+    Na_Autoclave --> Pronta_Esteril: Ciclo Aprovado 134C e 2.1 bar
     
-    Na_Autoclave --> Pronta_Estéril: Ciclo Aprovado (134°C / 2.1 bar)
+    Pronta_Esteril --> Em_Uso_Clinico: Retirada no Balcão com GRR
+    Pronta_Esteril --> Alerta_Vencimento: Atingiu 12 dias em estoque
+    Alerta_Vencimento --> Expirada: Ultrapassou 15 dias sem uso
+    Expirada --> Expurgado: Re-esterilização Obrigatória ANVISA
     
-    state Pronta_Estéril {
-        [*] --> Disponivel_Almoxarifado
-        Disponivel_Almoxarifado --> Alerta_Expiração: > 12 dias sem uso
-        Alerta_Expiração --> Expirada: > 15 dias sem uso
-    }
-    
-    Disponivel_Almoxarifado --> Em_Uso_Clinico: Retirada no Balcão (Bipagem + GRR)
-    Expirada --> Expurgado: Re-esterilização Obrigatória (ANVISA)
-    
-    Em_Uso_Clinico --> Devolvida: Término do Procedimento Clínico
+    Em_Uso_Clinico --> Devolvida: Procedimento Clínico Finalizado
     Devolvida --> Expurgado: Entrada na CME para Novo Ciclo
 ```
 
@@ -84,69 +91,77 @@ O processo de liberação e devolução ocorre via Terminal Scanner com registro
 ```mermaid
 sequenceDiagram
     autonumber
-    actor A as Acadêmico (Aluno)
+    actor A as Acadêmico
     actor B as Atendente de Balcão
     participant S as Terminal Scanner
-    participant DB as Base de Dados / Trilha
+    participant DB as Banco de Dados
 
-    Note over A,B: Fluxo de Retirada para Clínica
-    A->>B: Solicita marmita informando Matrícula (GRR)
-    B->>S: Bipa código da marmita (ex: CIR-001)
-    S->>DB: Verifica status da marmita (deve ser 'Ready' e dentro da validade)
-    S->>DB: Valida situação do aluno (status 'Active')
-    B->>B: Confere integridade do envelope e indicador químico classe 5
-    B->>S: Confirma liberação vinculando ao GRR
-    S->>DB: Atualiza status para 'In Use' e grava transação com timestamp
-    B-->>A: Entrega marmita esterilizada
+    Note over A,B: 1. Fluxo de Retirada para Atendimento Clínico
+    A->>B: Solicita marmita informando Matrícula GRR
+    B->>S: Bipa código da marmita (exemplo CIR-001)
+    S->>DB: Consulta status e validade estéril da marmita
+    S->>DB: Valida situação cadastral do aluno no sistema
+    B->>B: Confere integridade e viragem do indicador classe 5
+    B->>S: Confirma liberação vinculando ao GRR do aluno
+    S->>DB: Registra retirada e atualiza status para Em Uso
+    B-->>A: Entrega marmita esterilizada ao aluno
 
-    Note over A,B: Atendimento Clínico Concluído
-    A->>B: Devolve a marmita no guichê de expurgo
+    Note over A,B: 2. Atendimento Clínico Concluído
+    A->>B: Devolve marmita no guichê de expurgo
     B->>S: Bipa ou seleciona a marmita em devolução
-    B->>B: Confere presença dos instrumentais e integridade da caixa
-    B->>S: Registra devolução com observações
-    S->>DB: Atualiza status para 'Decontaminated' e desvincula custódia
-    DB-->>S: Marmita encaminhada para ciclo de esterilização CME
+    B->>B: Confere instrumentais e integridade da caixa
+    B->>S: Registra devolução com observações do estado
+    S->>DB: Atualiza status para Decontaminada e libera custódia
+    DB-->>S: Encaminha marmita para novo ciclo na CME
 ```
 
 ---
 
 ## 4. Fluxo de Auditoria Sanitária e Exportação XLSX
 
-Para inspeções de vigilância sanitária e fechamentos de mês da faculdade, a aba **Relatórios & Auditoria** processa os dados clínicos e gera planilhas analíticas:
+Para inspeções de vigilância sanitária e fechamentos mensais da faculdade, a aba **Relatórios & Auditoria** processa os dados clínicos e gera planilhas analíticas no formato Microsoft Excel:
 
 ```mermaid
 flowchart TD
     subgraph DADOS ["Fontes de Dados do Sistema"]
-        D1[(Acervo de Marmitas)]
-        D2[(Trilha de Transações de Balcão)]
-        D3[(Laudos Físico-Químicos de Autoclave)]
-        D4[(Base de Acadêmicos e Custódia)]
+        D1[("Acervo Geral de Marmitas")]
+        D2[("Trilha de Transações de Balcão")]
+        D3[("Laudos Físico-Químicos de Autoclave")]
+        D4[("Base de Acadêmicos e Custódia")]
     end
 
     subgraph SELECAO ["Interface de Auditoria"]
-        T1[Seletor de Tipo de Relatório]
-        T2[Seletor de Mês / Período]
-        T1 -->|Mensal| V1[Consolidado Mensal & Giro por Especialidade]
-        T1 -->|Diário| V2[Movimentações e Tempo em Clínica Hoje]
-        T1 -->|Semanal| V3[Histograma de Segunda a Sexta]
-        T1 -->|Esterilização| V4[Parâmetros Autoclave & Testes Biológicos]
-        T1 -->|Auditoria| V5[Custódia Ativa por Matrícula GRR]
+        T1["Seletor de Tipo de Relatório"]
+        T2["Seletor de Mês e Período"]
+        T1 -->|Mensal| V1["Consolidado Mensal e Giro por Especialidade"]
+        T1 -->|Diário| V2["Movimentações e Tempo em Clínica Hoje"]
+        T1 -->|Semanal| V3["Histograma de Segunda a Sexta"]
+        T1 -->|Esterilização| V4["Parâmetros de Autoclave e Testes Biológicos"]
+        T1 -->|Auditoria| V5["Custódia Ativa por Matrícula GRR"]
     end
 
-    DADOS --> SELECAO
+    D1 --> SELECAO
+    D2 --> SELECAO
+    D3 --> SELECAO
+    D4 --> SELECAO
 
-    BTN[Botão 'Exportar Relatório Mensal XLSX']
+    BTN["Botão: Exportar Relatório Mensal XLSX"]
     SELECAO --> BTN
 
-    subgraph ARQUIVO ["Planilha Microsoft Excel Gerada (.xlsx)"]
-        S1[Aba 1: Resumo Executivo & Conformidade ANVISA]
-        S2[Aba 2: Acervo Detalhado de Marmitas]
-        S3[Aba 3: Histórico de Movimentações de Balcão]
-        S4[Aba 4: Laudos Técnicos de Autoclaves Cristófoli]
-        S5[Aba 5: Giro por Especialidade Odontológica]
+    subgraph ARQUIVO ["Planilha Microsoft Excel Gerada .xlsx"]
+        S1["Aba 1: Resumo Executivo e Conformidade ANVISA"]
+        S2["Aba 2: Acervo Detalhado de Marmitas"]
+        S3["Aba 3: Histórico de Movimentações de Balcão"]
+        S4["Aba 4: Laudos Técnicos de Autoclaves Cristófoli"]
+        S5["Aba 5: Giro por Especialidade Odontológica"]
     end
 
     BTN --> ARQUIVO
+
+    style DADOS fill:#f8fafc,stroke:#94a3b8,stroke-width:1px
+    style SELECAO fill:#f1f5f9,stroke:#64748b,stroke-width:1px
+    style ARQUIVO fill:#ecfdf5,stroke:#10b981,stroke-width:2px
+    style BTN fill:#059669,stroke:#047857,color:#ffffff,font-weight:bold
 ```
 
 ---
@@ -180,6 +195,6 @@ src/
 
 - **React 18** com **TypeScript**
 - **Vite** para compilação ágil
-- **Tailwind CSS** para estilização técnica e acessível (Design System baseado em tons neutros, estados de alta legibilidade e sem excesso de gradientes)
+- **Tailwind CSS** para estilização técnica e acessível
 - **SheetJS (xlsx)** para geração nativa de planilhas Excel `.xlsx` no navegador do cliente
 - **Material Symbols Outlined** para iconografia técnica de saúde e biossegurança
