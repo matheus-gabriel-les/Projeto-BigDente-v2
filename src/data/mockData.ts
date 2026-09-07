@@ -6,7 +6,8 @@ import {
   DocArticle,
   VideoTutorial,
   UserProfile,
-  AutoclaveCycleRecord
+  AutoclaveCycleRecord,
+  AlmoxarifadoShiftReport
 } from '../types';
 
 export const APP_IMAGES = {
@@ -690,5 +691,57 @@ export const videoTutorials: VideoTutorial[] = [
     description: "Guia completo sobre os parâmetros de 134°C a 2.1 bar, teste de esporos biológicos e contagem regressiva de validade.",
     thumbnailUrl: APP_IMAGES.tutorialSterilization,
     category: "Protocolo de Esterilização"
+  }
+];
+
+export const initialAlmoxarifadoReports: AlmoxarifadoShiftReport[] = [
+  {
+    id: 'rep-shift-101',
+    date: 'Hoje (Turno Matutino)',
+    shift: 'Manhã (07:30 - 12:00)',
+    attendantName: 'Juliana Santos',
+    damagesReported: [
+      {
+        id: 'dmg-1',
+        kitCode: 'MAR-CIR-02',
+        type: 'Trava / Fecho Quebrado',
+        studentGrr: '20230192',
+        studentName: 'Mariana Costa Silva',
+        description: 'Fecho lateral da caixa inox soltou durante transporte na clínica cirúrgica.',
+        severity: 'Média'
+      },
+      {
+        id: 'dmg-2',
+        kitCode: 'K-E101',
+        type: 'Etiqueta Ilegível / Descolada',
+        studentGrr: '20224810',
+        studentName: 'Lucas Ferreira Lima',
+        description: 'Etiqueta térmica descolou parcialmente após lavagem no expurgo; necessita reimpressão.',
+        severity: 'Baixa'
+      }
+    ],
+    overdueRetentions: [
+      {
+        id: 'over-1',
+        kitCode: 'MAR-DEN-03',
+        studentName: 'Beatriz Nogueira Souza',
+        studentGrr: '20219402',
+        checkoutTime: '08:15',
+        hoursLate: 2.5,
+        clinicalArea: 'Dentística Restauradora III'
+      }
+    ],
+    suppliesConsumed: {
+      surgicalGradePouches: 38,
+      chemicalIndicatorClass5Strips: 38,
+      autoclaveTapeMeters: 14,
+      biologicalIndicatorAmpoules: 2
+    },
+    totalWithdrawals: 26,
+    totalReturns: 22,
+    pendingReturns: 4,
+    peakHourInterval: '07:45 - 08:30 (Entrada) / 11:30 - 12:15 (Devolução)',
+    notesForAdmin: 'Turno transcorreu normalmente com 26 liberações. Foi solicitado reforço de rolos de fita zebrada ao almoxarifado central.',
+    status: 'Enviado para Administração'
   }
 ];

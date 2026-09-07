@@ -4,7 +4,7 @@ import { TabType, UserProfile } from '../types';
 interface SidebarProps {
   currentTab: TabType;
   onSelectTab: (tab: TabType) => void;
-  onOpenNewWithdrawal: () => void;
+  onOpenNewWithdrawal?: () => void;
   isMobileOpen: boolean;
   onCloseMobile: () => void;
   activeProfile: UserProfile;
@@ -87,23 +87,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
         </div>
-
-        {/* CTA exclusiva do balcão de atendimento */}
-        {activeProfile.role === 'receptionist' && (
-          <div className="mb-3 px-1">
-            <button
-              id="sidebar-new-withdrawal-btn"
-              onClick={() => {
-                onOpenNewWithdrawal();
-                onCloseMobile();
-              }}
-              className="w-full bg-slate-900 text-white py-2.5 px-3.5 rounded-xl text-[13px] font-medium tracking-wide flex items-center justify-center gap-2 hover:bg-slate-800 transition-all shadow-xs active:scale-[0.98] cursor-pointer group"
-            >
-              <span className="material-symbols-outlined text-[18px] text-blue-400 group-hover:rotate-90 transition-transform duration-200">add</span>
-              <span>Nova Retirada</span>
-            </button>
-          </div>
-        )}
 
         {/* Main Navigation */}
         <nav className="flex-1 flex flex-col gap-1 overflow-y-auto px-1">

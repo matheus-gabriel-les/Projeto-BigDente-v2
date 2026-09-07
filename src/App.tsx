@@ -4,13 +4,14 @@
  */
 
 import React, { useState } from 'react';
-import { TabType, Student, Kit, Transaction, ActionAlert, UserProfile } from './types';
+import { TabType, Student, Kit, Transaction, ActionAlert, UserProfile, AlmoxarifadoShiftReport } from './types';
 import {
   initialStudents,
   initialKits,
   initialTransactions,
   initialAlerts,
-  userProfiles
+  userProfiles,
+  initialAlmoxarifadoReports
 } from './data/mockData';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -34,6 +35,7 @@ export default function App() {
   const [kits, setKits] = useState<Kit[]>(initialKits);
   const [transactions, setTransactions] = useState<Transaction[]>(initialTransactions);
   const [alerts, setAlerts] = useState<ActionAlert[]>(initialAlerts);
+  const [almoxarifadoReports, setAlmoxarifadoReports] = useState<AlmoxarifadoShiftReport[]>(initialAlmoxarifadoReports);
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [isNewWithdrawalOpen, setIsNewWithdrawalOpen] = useState(false);
@@ -45,6 +47,11 @@ export default function App() {
     setTimeout(() => {
       setToastMessage(null);
     }, 4000);
+  };
+
+  const handleSaveAlmoxarifadoReport = (newReport: AlmoxarifadoShiftReport) => {
+    setAlmoxarifadoReports((prev) => [newReport, ...prev.filter((r) => r.id !== newReport.id)]);
+    showToast(`Levantamento do plantão (${newReport.shift}) enviado para a Administração!`);
   };
 
   // Switch role handler
@@ -339,6 +346,7 @@ export default function App() {
 
           {(currentTab === 'student_space' || currentTab === 'student_available') && (
             <StudentPortalView
+              currentTab={currentTab}
               activeProfile={activeProfile}
               students={students}
               kits={kits}
@@ -363,6 +371,7 @@ export default function App() {
               kits={kits}
               transactions={transactions}
               students={students}
+              almoxarifadoReports={almoxarifadoReports}
             />
           )}
 

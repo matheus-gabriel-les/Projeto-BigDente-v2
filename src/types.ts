@@ -118,6 +118,45 @@ export interface VideoTutorial {
   category: string;
 }
 
+export interface KitDamageReport {
+  id: string;
+  kitCode: string;
+  type: 'Trava / Fecho Quebrado' | 'Caixa Amassada' | 'Perfuração de Grau Cirúrgico' | 'Etiqueta Ilegível / Descolada';
+  studentGrr: string;
+  studentName: string;
+  description: string;
+  severity: 'Alta' | 'Média' | 'Baixa';
+}
+
+export interface AlmoxarifadoShiftReport {
+  id: string;
+  date: string;
+  shift: 'Manhã (07:30 - 12:00)' | 'Tarde (13:30 - 18:00)' | 'Noite (18:30 - 22:00)';
+  attendantName: string;
+  damagesReported: KitDamageReport[];
+  overdueRetentions: Array<{
+    id: string;
+    kitCode: string;
+    studentName: string;
+    studentGrr: string;
+    checkoutTime: string;
+    hoursLate: number;
+    clinicalArea: string;
+  }>;
+  suppliesConsumed: {
+    surgicalGradePouches: number; // Envelopes de grau cirúrgico
+    chemicalIndicatorClass5Strips: number; // Tiras de integrador classe 5
+    autoclaveTapeMeters: number; // Metros de fita zebrada
+    biologicalIndicatorAmpoules: number; // Ampolas de esporos
+  };
+  totalWithdrawals: number;
+  totalReturns: number;
+  pendingReturns: number;
+  peakHourInterval: string;
+  notesForAdmin: string;
+  status: 'Enviado para Administração' | 'Revisado pela Coordenação';
+}
+
 export interface AutoclaveCycleRecord {
   id: string;
   cycleNumber: number;
