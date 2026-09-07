@@ -1,0 +1,8 @@
+{
+  "name": "LabControl - Clinical Efficiency",
+  "description": "Sistema integrado para monitoramento de kits laboratoriais, esterilização, gestão de alunos e protocolo de retirada e devolução.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

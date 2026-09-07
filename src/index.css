@@ -1,0 +1,74 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg: #f8fafc;
+    --surface: #ffffff;
+    --primary: #0f172a;
+    --primary-light: #1e293b;
+    --accent: #2563eb;
+    --accent-hover: #1d4ed8;
+    --accent-subtle: #eff6ff;
+    --border: #e2e8f0;
+    --border-subtle: #f1f5f9;
+    --text-main: #0f172a;
+    --text-muted: #64748b;
+    --text-subtle: #94a3b8;
+    
+    --color-primary: #0f172a;
+    --color-primary-container: #1e293b;
+    --color-on-primary: #ffffff;
+    --color-on-primary-container: #94a3b8;
+    
+    --color-secondary: #2563eb;
+    --color-secondary-container: #3b82f6;
+    --color-on-secondary: #ffffff;
+    --color-secondary-fixed: #dbeafe;
+    
+    --color-surface: #f8fafc;
+    --color-surface-container-lowest: #ffffff;
+    --color-surface-container-low: #f8fafc;
+    --color-surface-container: #f1f5f9;
+    --color-surface-container-high: #e2e8f0;
+    
+    --color-on-surface: #0f172a;
+    --color-on-surface-variant: #475569;
+    --color-outline: #94a3b8;
+    --color-outline-variant: #e2e8f0;
+
+    --color-error: #e11d48;
+    --color-error-container: #ffe4e6;
+    --color-on-error: #ffffff;
+    --color-on-error-container: #9f1239;
+  }
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.material-symbols-outlined.icon-fill,
+.material-symbols-outlined[data-weight="fill"] {
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Sleek Interface custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
