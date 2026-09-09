@@ -59,7 +59,6 @@ export interface Kit {
   items?: string[];
   notes?: string;
   rejectionReason?: string; // Motivo caso seja reprovado pela atendente no balcão
-  category?: 'Cirurgia' | 'Periodontia' | 'Endodontia' | 'Dentística' | 'Prótese' | 'Pediatria' | 'Geral';
   autoclaveCycleId?: string;
   biologicalTestResult?: 'Negativo (Aprovado)' | 'Pendente' | 'Positivo (Falha)';
   marmitasCount?: number; // x número de marmitas (itens como bisturis, etc.)
@@ -96,13 +95,15 @@ export interface Student {
 export interface Transaction {
   id: string;
   timestamp: string;
-  action: 'Withdrawal' | 'Return' | 'Flagged';
+  action: 'Withdrawal' | 'Flagged';
   kitId: string;
   kitName?: string;
   studentName?: string;
   grrCode: string;
+  studentPin?: string;
   status: 'IN USE' | 'STERILE' | 'EXPIRED' | 'FLAGGED';
   operatorName?: string;
+  operatorId?: string;
   notes?: string;
   withdrawnMarmitas?: number;
   withdrawnPacotes?: number;

@@ -269,7 +269,7 @@ export const initialKits: Kit[] = [
     id: "KIT-MAR-1024",
     code: "KIT-MAR-1024",
     name: "Marmita Cirúrgica Set A - Alina",
-    category: "Cirurgia",
+
     status: "In Use",
     lastSterilized: "12 de Outubro",
     cyclesLogged: 45,
@@ -290,7 +290,7 @@ export const initialKits: Kit[] = [
     id: "MAR-MCS-01",
     code: "KIT-MCS-01",
     name: "Kit de Dentística Restauradora - Mariana",
-    category: "Dentística",
+
     status: "Ready",
     lastSterilized: "14 de Outubro",
     cyclesLogged: 22,
@@ -310,7 +310,7 @@ export const initialKits: Kit[] = [
     id: "MAR-MCS-02",
     code: "KIT-MCS-02",
     name: "Kit de Periodontia Clínica - Mariana",
-    category: "Periodontia",
+
     status: "Ready",
     lastSterilized: "11 de Outubro",
     cyclesLogged: 18,
@@ -330,7 +330,7 @@ export const initialKits: Kit[] = [
     id: "MAR-MCS-03",
     code: "KIT-MCS-03",
     name: "Kit de Cirurgia Menor & Capas - Mariana",
-    category: "Cirurgia",
+
     status: "Decontaminated",
     lastSterilized: "Em esterilização",
     cyclesLogged: 15,
@@ -350,7 +350,7 @@ export const initialKits: Kit[] = [
     id: "MAR-MCS-04",
     code: "KIT-MCS-04",
     name: "Kit de Isolamento & Endodontia - Mariana",
-    category: "Endodontia",
+
     status: "Aguardando Liberação",
     lastSterilized: "Aguardando conferência",
     cyclesLogged: 0,
@@ -370,7 +370,7 @@ export const initialKits: Kit[] = [
     id: "KIT-MAR-0891",
     code: "KIT-MCS-05",
     name: "Kit Exame Clínico Básico - Mariana",
-    category: "Geral",
+
     status: "Expired",
     lastSterilized: "15 de Setembro",
     cyclesLogged: 112,
@@ -406,7 +406,7 @@ export const initialKits: Kit[] = [
     id: "KIT-MAR-1102",
     code: "KIT-MAR-1102",
     name: "Marmita de Exodontia & Alavancas - Marcus",
-    category: "Cirurgia",
+
     status: "Expired",
     lastSterilized: "15 de Setembro",
     cyclesLogged: 8,
@@ -424,7 +424,7 @@ export const initialKits: Kit[] = [
     id: "KIT-MAR-0045",
     code: "KIT-MAR-0045",
     name: "Marmita Cirúrgica de Implantes - Sarah",
-    category: "Cirurgia",
+
     status: "Ready",
     lastSterilized: "08 de Outubro",
     cyclesLogged: 29,
@@ -442,7 +442,7 @@ export const initialKits: Kit[] = [
     id: "K-P204",
     code: "K-P204",
     name: "Marmita Periodontia Avançada B - Tomás",
-    category: "Periodontia",
+
     status: "Ready",
     lastSterilized: "11 de Outubro",
     cyclesLogged: 64,
@@ -460,7 +460,7 @@ export const initialKits: Kit[] = [
     id: "K-E101",
     code: "K-E101",
     name: "Marmita de Endodontia de Precisão - João Pedro",
-    category: "Endodontia",
+
     status: "In Use",
     lastSterilized: "10 de Outubro",
     cyclesLogged: 38,
@@ -481,7 +481,7 @@ export const initialKits: Kit[] = [
     id: "K-C405",
     code: "K-C405",
     name: "Marmita Odontopediatria Restauradora - Ana Carolina",
-    category: "Pediatria",
+
     status: "Ready",
     lastSterilized: "13 de Outubro",
     cyclesLogged: 19,
@@ -499,7 +499,7 @@ export const initialKits: Kit[] = [
     id: "KIT-8942-A",
     code: "KIT-8942-A",
     name: "Marmita Prótese Fixa & Preparo - Alina",
-    category: "Prótese",
+
     status: "Expiring",
     lastSterilized: "30 de Setembro",
     cyclesLogged: 88,
@@ -517,7 +517,7 @@ export const initialKits: Kit[] = [
     id: "KIT-7710-B",
     code: "KIT-7710-B",
     name: "Marmita Diagnóstico & Biópsia - Alina",
-    category: "Cirurgia",
+
     status: "Ready",
     lastSterilized: "14 de Outubro",
     cyclesLogged: 14,
@@ -549,7 +549,7 @@ export const initialTransactions: Transaction[] = [
   {
     id: "tx-2",
     timestamp: "09:35:04",
-    action: "Return",
+    action: "Flagged",
     kitId: "K-C405",
     kitName: "Marmita Odontopediatria Restauradora",
     studentName: "Ana Carolina Ribeiro",

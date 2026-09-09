@@ -46,21 +46,6 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
   const alertKits = kits.filter((k) => k.status === 'Expiring' || k.status === 'Expired');
   const decontaminatedKits = kits.filter((k) => k.status === 'Decontaminated');
 
-  // Distribuição por Especialidade
-  const categories = ['Cirurgia', 'Dentística', 'Periodontia', 'Endodontia', 'Prótese', 'Pediatria'];
-  const categorySummary = categories.map((cat) => {
-    const catKits = kits.filter((k) => k.category === cat);
-    const catInUse = catKits.filter((k) => k.status === 'In Use').length;
-    const catReady = catKits.filter((k) => k.status === 'Ready').length;
-    return {
-      categoria: cat,
-      total: catKits.length,
-      disponiveis: catReady,
-      emUso: catInUse,
-      taxaUtilizacao: catKits.length > 0 ? Math.round((catInUse / catKits.length) * 100) : 0,
-    };
-  });
-
   // Filtragem Reativa do Relatório Diário
   const filteredDailyTransactions = transactions.filter((tx) => {
     if (dailyFilterAction !== 'all' && tx.action !== dailyFilterAction) {
@@ -143,7 +128,6 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     const kitsSheetData = kits.map((k) => ({
       'Código da Marmita': k.code,
       'Identificação': k.name,
-      'Especialidade': k.category || 'Geral',
       'Status': k.status === 'Ready' ? 'Pronta / Estéril' : k.status === 'In Use' ? 'Em Uso Clínico' : k.status === 'Expired' ? 'Vencida' : k.status === 'Expiring' ? 'A Vencer' : 'Em Esterilização',
       'Validade (Dias Restantes)': k.validityDays,
       'Última Esterilização': k.lastSterilized,
@@ -162,12 +146,12 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     const transactionsSheetData = transactions.map((t) => ({
       'ID Registro': t.id,
       'Horário': t.timestamp,
-      'Operação': t.action === 'Withdrawal' ? 'Retirada Liberada' : t.action === 'Return' ? 'Devolução Recebida' : 'Sinalização',
+      'Operação': t.action === 'Withdrawal' ? 'Retirada Liberada' : 'Sinalização',
       'Código da Marmita': t.kitId,
       'Identificação da Marmita': t.kitName || '-',
       'Acadêmico': t.studentName || '-',
       'Matrícula (GRR)': t.grrCode,
-      'Atendente Balcão': t.operatorName || 'Atendente Almoxarifado',
+      'Atendente Balcão': (t.operatorName ? `${t.operatorName} (${t.operatorId || ''})` : 'Atendente Almoxarifado'),
       'Observação / Conferência': t.notes || 'Identificação e lacre conferidos',
     }));
     const wsTrans = XLSX.utils.json_to_sheet(transactionsSheetData);
@@ -210,18 +194,6 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       const wsAlmox = XLSX.utils.json_to_sheet(almoxSheetData);
       XLSX.utils.book_append_sheet(wb, wsAlmox, 'Boletins Almoxarifado');
     }
-
-    // Sheet 6: Especialidades e Giro
-    const wsCat = XLSX.utils.json_to_sheet(
-      categorySummary.map((c) => ({
-        'Especialidade Clínica': c.categoria,
-        'Total de Marmitas': c.total,
-        'Prontas / Estéreis': c.disponiveis,
-        'Em Atendimento': c.emUso,
-        'Taxa de Giro (%)': `${c.taxaUtilizacao}%`,
-      }))
-    );
-    XLSX.utils.book_append_sheet(wb, wsCat, 'Especialidades');
 
     // Nome descritivo do arquivo XLSX
     const prefix =
@@ -546,74 +518,6 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               </p>
             </div>
           </div>
-
-          {/* Tabela de Especialidades */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-xs">
-            <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-              <div>
-                <h3 className="text-[16px] font-bold text-slate-900">
-                  Balanço Mensal por Especialidade Clínica
-                </h3>
-                <p className="text-[12px] text-slate-500">
-                  Marmitas em circulação, taxa de demanda e disponibilidade para aulas práticas.
-                </p>
-              </div>
-              <span className="text-[12px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-3 py-1 rounded-full">
-                {selectedMonth}
-              </span>
-            </div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold uppercase text-slate-500">
-                  <tr>
-                    <th className="py-3 px-5">Especialidade</th>
-                    <th className="py-3 px-5">Total de Marmitas</th>
-                    <th className="py-3 px-5">Disponíveis (Estéreis)</th>
-                    <th className="py-3 px-5">Em Uso Clínico</th>
-                    <th className="py-3 px-5">Taxa de Utilização</th>
-                    <th className="py-3 px-5">Status do Acervo</th>
-                  </tr>
-                </thead>
-                <tbody className="text-[13px] divide-y divide-slate-100">
-                  {categorySummary.map((item) => (
-                    <tr key={item.categoria} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="py-3.5 px-5 font-bold text-slate-900">
-                        {item.categoria}
-                      </td>
-                      <td className="py-3.5 px-5 font-semibold text-slate-700">
-                        {item.total} unidades
-                      </td>
-                      <td className="py-3.5 px-5 text-emerald-700 font-semibold">
-                        {item.disponiveis} prontas
-                      </td>
-                      <td className="py-3.5 px-5 text-blue-700 font-semibold">
-                        {item.emUso} em atendimento
-                      </td>
-                      <td className="py-3.5 px-5">
-                        <div className="flex items-center gap-2">
-                          <div className="w-24 bg-slate-100 rounded-full h-2 overflow-hidden">
-                            <div
-                              className="bg-purple-600 h-2 rounded-full"
-                              style={{ width: `${Math.min(item.taxaUtilizacao, 100)}%` }}
-                            />
-                          </div>
-                          <span className="font-mono text-[12px] text-slate-600 font-semibold">
-                            {item.taxaUtilizacao}%
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-5">
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-medium">
-                          Conforme
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
         </div>
       )}
 
@@ -646,16 +550,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               >
                 Apenas Retiradas ({transactions.filter((t) => t.action === 'Withdrawal').length})
               </button>
-              <button
-                onClick={() => setDailyFilterAction('Return')}
-                className={`px-3 py-1.5 rounded-lg text-[12px] font-bold cursor-pointer transition-colors ${
-                  dailyFilterAction === 'Return'
-                    ? 'bg-emerald-600 text-white'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                }`}
-              >
-                Apenas Devoluções ({transactions.filter((t) => t.action === 'Return').length})
-              </button>
+              
             </div>
 
             <div className="w-full sm:w-64">
@@ -685,13 +580,13 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
             <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs">
               <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                Devoluções Realizadas Hoje
+                Marmitas Sinalizadas / Bloqueadas
               </span>
               <div className="text-[28px] font-bold text-emerald-600 mt-1">
-                {transactions.filter((t) => t.action === 'Return').length} Devolvidas
+                {transactions.filter((t) => t.action === 'Flagged').length} Bloqueadas
               </div>
               <p className="text-[12px] text-emerald-700 font-medium mt-1">
-                Encaminhadas para expurgo e esterilização
+                Com avarias ou vencidas
               </p>
             </div>
 
@@ -757,9 +652,13 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                       </td>
                       <td className="py-3.5 px-5 font-medium text-slate-700">
                         {t.studentName || 'Acadêmico'} <span className="text-slate-400 font-mono">({t.grrCode})</span>
+                         {t.studentPin && <span className="ml-2 px-1.5 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded font-mono text-[10px]">Senha: {t.studentPin}</span>}
                       </td>
                       <td className="py-3.5 px-5 text-slate-600 text-[12px]">
-                        {t.notes || 'Identificação e lacre conferidos'}
+                        <div className="flex flex-col gap-1">
+                          <span>{t.notes || 'Identificação e lacre conferidos'}</span>
+                          <span className="text-[10px] text-slate-400">Atendente: {t.operatorName || 'Almoxarifado'} {t.operatorId ? `(${t.operatorId})` : ''}</span>
+                        </div>
                       </td>
                     </tr>
                   ))}

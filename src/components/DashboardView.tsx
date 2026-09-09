@@ -24,15 +24,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const activeStudents = students.filter((s) => s.status === 'Active');
   const activeStudentsCount = activeStudents.length;
 
-  // Group kits by clinical category for administrative asset overview
-  const categories = ['Cirurgia', 'Dentística', 'Periodontia', 'Endodontia', 'Prótese'];
-  const categoryStats = categories.map((cat) => {
-    const total = kits.filter((k) => k.category === cat).length;
-    const ready = kits.filter((k) => k.category === cat && k.status === 'Ready').length;
-    const inUse = kits.filter((k) => k.category === cat && k.status === 'In Use').length;
-    return { name: cat, total, ready, inUse };
-  });
-
   return (
     <div className="space-y-6">
       {/* Header Section */}
@@ -277,20 +268,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </button>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {categoryStats.map((item) => (
-                <div
-                  key={item.name}
-                  className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col justify-between"
-                >
-                  <span className="text-[12.5px] font-bold text-slate-800">{item.name}</span>
-                  <div className="mt-2 flex items-baseline justify-between text-[11.5px]">
-                    <span className="text-slate-500">Total: <strong className="text-slate-800">{item.total}</strong></span>
-                    <span className="text-emerald-700 font-semibold">{item.ready} prontas</span>
-                  </div>
-                </div>
-              ))}
-            </div>
           </div>
 
           {/* Academic Custody Overview: Students currently holding kits */}
@@ -325,9 +302,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         Marmita
                       </th>
                       <th className="py-2.5 px-4 text-[11.5px] font-semibold text-slate-500 uppercase tracking-wider">
-                        Especialidade
-                      </th>
-                      <th className="py-2.5 px-4 text-[11.5px] font-semibold text-slate-500 uppercase tracking-wider">
                         Acadêmico Responsável
                       </th>
                       <th className="py-2.5 px-4 text-[11.5px] font-semibold text-slate-500 uppercase tracking-wider">
@@ -340,11 +314,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <tr key={kit.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="py-2.5 px-4 font-mono font-bold text-slate-900">
                           {kit.code}
-                        </td>
-                        <td className="py-2.5 px-4">
-                          <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[11px] font-medium">
-                            {kit.category || 'Geral'}
-                          </span>
                         </td>
                         <td className="py-2.5 px-4 font-medium text-slate-800">
                           {kit.assignedStudentName || (kit.assignedTo ? `GRR ${kit.assignedTo}` : 'Acadêmico')}

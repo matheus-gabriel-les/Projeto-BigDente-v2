@@ -113,12 +113,23 @@ export default function App() {
 
   // Update kit status handler
   const handleUpdateKitStatus = (kitId: string, newStatus: KitStatus, reason?: string) => {
+    const today = new Date().toLocaleDateString('pt-BR');
+    
     setKits(
       kits.map((k) => {
         if (k.id === kitId || k.code === kitId) {
+          const isNowReady = newStatus === 'Ready';
+          const isNowDecontaminated = newStatus === 'Decontaminated';
+          
           return {
             ...k,
             status: newStatus,
+            // If the kit is sent to sterilization or marked ready, set 15 days of validity
+            validityDays: (isNowReady || isNowDecontaminated) ? 15 : k.validityDays,
+            lastSterilized: isNowReady ? today : (isNowDecontaminated ? 'Em esterilização' : k.lastSterilized),
+            cyclesLogged: isNowReady ? k.cyclesLogged + 1 : k.cyclesLogged,
+            marmitasWithdrawn: isNowReady ? 0 : k.marmitasWithdrawn,
+            pacotesWithdrawn: isNowReady ? 0 : k.pacotesWithdrawn,
             rejectionReason:
               newStatus === 'Reprovado'
                 ? reason || 'Solicitação recusada pela atendente no balcão de conferência.'
@@ -128,6 +139,8 @@ export default function App() {
                 ? 'Enviado pelo acadêmico. Aguardando conferência e liberação no balcão.'
                 : newStatus === 'Reprovado'
                 ? `Reprovado no balcão: ${reason || 'Não conforme para esterilização'}`
+                : isNowDecontaminated
+                ? 'Kit aceito no balcão. Em processo de esterilização.'
                 : k.notes
           };
         }
@@ -137,7 +150,7 @@ export default function App() {
     showToast(
       newStatus === 'Reprovado'
         ? `Solicitação do kit reprovada com sucesso.`
-        : `Status do kit atualizado para: ${newStatus}`
+        : `Status do kit atualizado para: ${newStatus === 'Decontaminated' ? 'Esterilizando' : newStatus}`
     );
   };
 
@@ -206,7 +219,7 @@ export default function App() {
   }: {
     studentGrr: string;
     kitId: string;
-    type: 'Withdrawal' | 'Return';
+    type: 'Withdrawal';
     withdrawnMarmitas?: number;
     withdrawnPacotes?: number;
   }) => {
@@ -238,12 +251,6 @@ export default function App() {
       newWithdrawnM = Math.min(totalM, currentWithdrawnM + toWithdrawM);
       newWithdrawnP = Math.min(totalP, currentWithdrawnP + toWithdrawP);
       actionNotes = `Retirada: ${toWithdrawM} marmita(s) e ${toWithdrawP} pacote(s).`;
-    } else {
-      const toReturnM = withdrawnMarmitas !== undefined ? withdrawnMarmitas : currentWithdrawnM;
-      const toReturnP = withdrawnPacotes !== undefined ? withdrawnPacotes : currentWithdrawnP;
-      newWithdrawnM = Math.max(0, currentWithdrawnM - toReturnM);
-      newWithdrawnP = Math.max(0, currentWithdrawnP - toReturnP);
-      actionNotes = `Devolução: ${toReturnM} marmita(s) e ${toReturnP} pacote(s).`;
     }
 
     const isFullyWithdrawn = (newWithdrawnM >= totalM) && (newWithdrawnP >= totalP);
@@ -257,9 +264,12 @@ export default function App() {
       kitName: matchedKit ? matchedKit.name : undefined,
       grrCode: matchedStudent ? matchedStudent.grr : studentGrr,
       studentName: matchedStudent ? matchedStudent.name : undefined,
+      studentPin: matchedStudent?.numericPassword ? matchedStudent.numericPassword.toString() : undefined,
       status: type === 'Withdrawal' ? (isFullyWithdrawn ? 'IN USE' : 'STERILE') : 'STERILE',
       withdrawnMarmitas: withdrawnMarmitas,
       withdrawnPacotes: withdrawnPacotes,
+      operatorName: activeProfile.name,
+      operatorId: activeProfile.id,
       notes: actionNotes
     };
 
@@ -415,6 +425,7 @@ export default function App() {
               onExecuteTransaction={handleExecuteTransaction}
               onSendKitToCME={handleSendKitToCME}
               onUpdateKitStatus={handleUpdateKitStatus}
+              onSterilizeKit={handleSterilizeKit}
               activeProfile={activeProfile}
             />
           )}

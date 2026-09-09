@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Kit, Student, Transaction, UserProfile, AlmoxarifadoShiftReport, KitDamageReport } from '../types';
+import { Kit, Student, Transaction, UserProfile, AlmoxarifadoShiftReport, KitDamageReport, KitStatus } from '../types';
 
 interface ReceptionCounterViewProps {
   students: Student[];
@@ -14,6 +14,7 @@ interface ReceptionCounterViewProps {
   }) => void;
   onSendKitToCME?: (kitId: string) => void;
   onUpdateKitStatus?: (kitId: string, status: KitStatus, rejectionReason?: string) => void;
+  onSterilizeKit?: (kitId: string) => void;
   activeProfile: UserProfile;
   almoxarifadoReports?: AlmoxarifadoShiftReport[];
   onSaveAlmoxarifadoReport?: (report: AlmoxarifadoShiftReport) => void;
@@ -26,6 +27,7 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
   onExecuteTransaction,
   onSendKitToCME,
   onUpdateKitStatus,
+  onSterilizeKit,
   activeProfile,
   almoxarifadoReports = [],
   onSaveAlmoxarifadoReport
@@ -52,10 +54,7 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
   const [withdrawPacotesQty, setWithdrawPacotesQty] = useState<number>(0);
 
   // Estados para Devolução Parcial ou Total no Balcão
-  const [counterReturningKit, setCounterReturningKit] = useState<Kit | null>(null);
-  const [returnMarmitasQty, setReturnMarmitasQty] = useState<number>(1);
-  const [returnPacotesQty, setReturnPacotesQty] = useState<number>(0);
-
+      
   // Estados para Leitor de QR Code pelo Celular
   const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
   const [qrScanInput, setQrScanInput] = useState('');
@@ -176,8 +175,7 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
         studentName: k.assignedStudentName || k.ownerStudentName || 'Acadêmico em atendimento',
         studentGrr: k.assignedTo || k.ownerStudentGrr || '20230192',
         checkoutTime: '08:15',
-        hoursLate: 2.5,
-        clinicalArea: k.category || 'Clínica Geral'
+        hoursLate: 2.5
       })),
       suppliesConsumed: {
         surgicalGradePouches: suppliesInput.pouches,
@@ -299,39 +297,6 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
     setTimeout(() => setVerificationFeedback(null), 5000);
   };
 
-  // Ação 2: Abrir Modal de Devolução Parcial/Total
-  const handleOpenReturnModal = (kit: Kit) => {
-    const mInUse = kit.marmitasWithdrawn ?? 1;
-    const pInUse = kit.pacotesWithdrawn ?? 0;
-    setCounterReturningKit(kit);
-    setReturnMarmitasQty(mInUse > 0 ? mInUse : 0);
-    setReturnPacotesQty(pInUse > 0 ? pInUse : 0);
-  };
-
-  // Confirmar Devolução (Parcial ou Total)
-  const handleConfirmCounterReturn = () => {
-    if (!currentStudent || !counterReturningKit) return;
-    onExecuteTransaction({
-      studentGrr: currentStudent.grr,
-      kitId: counterReturningKit.code,
-      type: 'Return',
-      withdrawnMarmitas: returnMarmitasQty,
-      withdrawnPacotes: returnPacotesQty
-    });
-
-    const itemsDesc = [];
-    if (returnMarmitasQty > 0) itemsDesc.push(`${returnMarmitasQty} marmita(s)`);
-    if (returnPacotesQty > 0) itemsDesc.push(`${returnPacotesQty} pacote(s)`);
-
-    setVerificationFeedback({
-      type: 'success',
-      message: `Devolução de ${itemsDesc.join(' e ') || 'itens'} do kit ${counterReturningKit.code} conferida e registrada. Encaminhada ao setor de limpeza e esterilização.`
-    });
-    setCounterReturningKit(null);
-    setDirectKitSearch('');
-    setTimeout(() => setVerificationFeedback(null), 5000);
-  };
-
   // Ação 3: Liberar Retirada Total Rápida
   const handleQuickWithdrawAll = (kit: Kit) => {
     if (!currentStudent) return;
@@ -348,27 +313,6 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
     setVerificationFeedback({
       type: 'success',
       message: `Kit / Marmita ${kit.code} conferido e liberado com sucesso para o acadêmico ${currentStudent.name} (${currentStudent.grr}).`
-    });
-    setDirectKitSearch('');
-    setTimeout(() => setVerificationFeedback(null), 5000);
-  };
-
-  // Ação 4: Receber Devolução Total Rápida
-  const handleQuickReturnAll = (kit: Kit) => {
-    if (!currentStudent) return;
-    const mInUse = kit.marmitasWithdrawn ?? 1;
-    const pInUse = kit.pacotesWithdrawn ?? 0;
-    onExecuteTransaction({
-      studentGrr: currentStudent.grr,
-      kitId: kit.code,
-      type: 'Return',
-      withdrawnMarmitas: mInUse,
-      withdrawnPacotes: pInUse
-    });
-
-    setVerificationFeedback({
-      type: 'success',
-      message: `Devolução do kit / marmita ${kit.code} conferida e registrada. Encaminhado ao setor de limpeza e esterilização.`
     });
     setDirectKitSearch('');
     setTimeout(() => setVerificationFeedback(null), 5000);
@@ -528,6 +472,18 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
     setTimeout(() => setVerificationFeedback(null), 6000);
   };
 
+  // Solicitações globais aguardando liberação no balcão
+  const globalPendingReleaseKits = kits.filter(
+    (k) =>
+      k.status === 'Aguardando Liberação' ||
+      (k.status as string) === 'Pending Release'
+  );
+
+  // Kits atualmente em processo de esterilização
+  const globalSterilizingKits = kits.filter(
+    (k) => k.status === 'Decontaminated'
+  );
+
   // Últimas conferências registradas
   const recentTransactions = transactions.slice(0, 5);
 
@@ -602,399 +558,337 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
       {/* ========================================================================= */}
       {/* MODO 1: TERMINAL DO BALCÃO (ATENDIMENTO DIRETO)                           */}
       {/* ========================================================================= */}
+      
       {activeTab === 'counter' && (
         <div className="space-y-6">
-          {/* ETAPA 1: Identificação do Estudante no Balcão */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-4">
-        <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-          <div className="flex-1 w-full">
-            <label className="text-[12px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-              1. Identificar Aluno(a) no Balcão (Digite GRR ou Nome)
+          {/* LEITOR DE QR CODE / FILTRO DE ALUNO */}
+          <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
+            <label className="text-[13px] font-bold text-slate-800 flex items-center gap-2 mb-2">
+              <span className="material-symbols-outlined text-[20px] text-blue-600">qr_code_scanner</span>
+              Leitor de QR Code / Filtrar por Aluno
             </label>
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[19px]">
-                badge
-              </span>
-              <input
-                type="text"
-                value={searchStudentInput}
-                onChange={(e) => setSearchStudentInput(e.target.value)}
-                placeholder="Ex: 20230192 ou Mariana Costa..."
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] text-slate-900 font-medium focus:bg-white focus:border-blue-500 focus:outline-hidden"
-              />
-            </div>
-          </div>
-
-          <div className="w-full md:w-72">
-            <label className="text-[12px] font-bold text-slate-700 uppercase tracking-wider block mb-1.5">
-              Ou bipe o código da marmita
-            </label>
-            <div className="relative">
-              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[19px]">
-                qr_code_scanner
-              </span>
-              <input
-                type="text"
-                value={directKitSearch}
-                onChange={(e) => setDirectKitSearch(e.target.value)}
-                placeholder="Ex: MAR-MCS-01 ou K-E101"
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[13px] font-mono text-slate-900 focus:bg-white focus:border-blue-500 focus:outline-hidden"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Chips de Alunos Rápidos */}
-        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-slate-100">
-          <span className="text-[11.5px] text-slate-500 font-medium mr-1">Alunos frequentes:</span>
-          {students.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => {
-                setSelectedStudentGrr(s.grr);
-                setSearchStudentInput('');
-              }}
-              className={`px-3 py-1 rounded-lg text-[12px] font-medium transition-colors cursor-pointer ${
-                currentStudent?.id === s.id
-                  ? 'bg-blue-600 text-white font-semibold'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              {s.name.split(' ')[0]} ({s.grr})
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Se o atendente bipou diretamente uma marmita */}
-      {matchedDirectKit && (
-        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-mono font-bold text-[13px] bg-amber-900 text-white px-2 py-0.5 rounded">
-                {matchedDirectKit.code}
-              </span>
-              <h4 className="text-[14px] font-bold text-amber-950">
-                {matchedDirectKit.name}
-              </h4>
-              <span className="text-[11.5px] text-amber-800">
-                ({matchedDirectKit.status === 'Ready' ? 'Estéril / Pronta' : matchedDirectKit.status === 'In Use' ? 'Em Uso' : 'Na Esterilização'})
-              </span>
-            </div>
-            <p className="text-[12px] text-amber-800 mt-1">
-              Pertence ao acadêmico: <strong>{matchedDirectKit.ownerStudentName || matchedDirectKit.assignedStudentName || 'Aluno'}</strong> (GRR: {matchedDirectKit.ownerStudentGrr || matchedDirectKit.assignedTo})
+            <p className="text-[11px] text-slate-500 mb-3">
+              Posicione o cursor no campo abaixo e bipe o QR Code do aluno, ou digite o GRR manualmente e pressione Enter.
             </p>
-          </div>
-
-          <button
-            onClick={() => handleSelectStudentFromDirectKit(matchedDirectKit)}
-            className="px-3.5 py-1.5 bg-amber-800 hover:bg-amber-900 text-white rounded-lg text-[12px] font-semibold cursor-pointer shrink-0"
-          >
-            Abrir Ficha do Aluno
-          </button>
-        </div>
-      )}
-
-      {/* ETAPA 2: Painel de Conferência das Marmitas do Aluno */}
-      {currentStudent ? (
-        <div className="space-y-6">
-          {/* Card de Identificação do Aluno */}
-          <div className="bg-slate-900 text-white rounded-2xl p-5 shadow-xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div>
-              <span className="text-[10px] font-mono text-blue-300 uppercase tracking-wider font-semibold block">
-                Acadêmico(a) em Atendimento no Balcão
-              </span>
-              <h3 className="text-[18px] font-bold text-white mt-0.5">
-                {currentStudent.name}
-              </h3>
-              <p className="text-[12.5px] text-slate-300">
-                Matrícula / GRR: <span className="font-mono text-blue-300 font-bold">{currentStudent.grr}</span> • {currentStudent.course}
-              </p>
+            <div className="relative">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">qr_code</span>
+              <input
+                type="text"
+                autoFocus
+                placeholder="Ex: ALUNO:20230192 ou 20230192"
+                value={qrScanInput}
+                onChange={(e) => setQrScanInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    handleProcessQrScan(qrScanInput);
+                    setQrScanInput('');
+                  }
+                }}
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-[14px] font-mono focus:outline-hidden focus:ring-2 focus:ring-blue-500 focus:bg-white"
+              />
             </div>
-
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded-full text-[11.5px] font-semibold">
-                Matrícula Regular
-              </span>
-            </div>
-          </div>
-
-          {/* 1. SEÇÃO: Kits e Marmitas Prontas para Retirada (Estéreis) */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <h3 className="text-[16px] font-bold text-slate-900">
-                  Kits Solicitados / Prontos para Retirada ({readyToWithdrawKits.length})
-                </h3>
-              </div>
-              <span className="text-[11.5px] text-slate-500">
-                O aluno veio retirar para entrar na clínica
-              </span>
-            </div>
-
-            {readyToWithdrawKits.length > 0 ? (
-              <div className="space-y-3">
-                {readyToWithdrawKits.map((kit) => {
-                  const mTotal = kit.marmitasCount ?? 1;
-                  const pTotal = kit.pacotesCount ?? 0;
-                  const mWithdrawn = kit.marmitasWithdrawn ?? 0;
-                  const pWithdrawn = kit.pacotesWithdrawn ?? 0;
-                  const mAvail = Math.max(0, mTotal - mWithdrawn);
-                  const pAvail = Math.max(0, pTotal - pWithdrawn);
-                  const hasMultiple = mTotal + pTotal > 1;
-
-                  return (
-                    <div
-                      key={kit.id}
-                      className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
-                    >
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono font-bold text-[13px] bg-slate-900 text-white px-2.5 py-0.5 rounded">
-                            {kit.code}
-                          </span>
-                          <h4 className="text-[15px] font-bold text-slate-900">{kit.name}</h4>
-                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-full">
-                            Pronto / Estéril ({kit.validityDays} dias)
-                          </span>
-                        </div>
-
-                        {/* Detalhamento dos Volumes do Kit */}
-                        <div className="flex items-center gap-2 flex-wrap text-[12px]">
-                          <span className="inline-flex items-center gap-1 font-semibold text-emerald-950 bg-emerald-100/70 border border-emerald-200 px-2 py-0.5 rounded-md">
-                            <span className="material-symbols-outlined text-[15px]">inventory_2</span>
-                            {mAvail} marmita(s) rígida(s)
-                          </span>
-                          {pTotal > 0 && (
-                            <span className="inline-flex items-center gap-1 font-semibold text-emerald-950 bg-emerald-100/70 border border-emerald-200 px-2 py-0.5 rounded-md">
-                              <span className="material-symbols-outlined text-[15px]">medical_services</span>
-                              {pAvail} pacote(s) macio(s)
-                            </span>
-                          )}
-                          <span className="text-slate-500">
-                            • Categoria: <strong>{kit.category || 'Geral'}</strong>
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0 w-full md:w-auto flex-wrap">
-                        {hasMultiple && (
-                          <button
-                            onClick={() => handleOpenWithdrawModal(kit)}
-                            className="w-full md:w-auto px-3.5 py-2 border border-emerald-600 bg-white hover:bg-emerald-50 text-emerald-800 rounded-xl text-[12.5px] font-bold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-[17px]">checklist</span>
-                            <span>Retirar Parcial</span>
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleQuickWithdrawAll(kit)}
-                          className="w-full md:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[13px] font-bold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">check</span>
-                          <span>{hasMultiple ? 'Liberar Tudo' : 'Liberar Retirada'}</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-[12.5px] text-slate-500 py-2 italic">
-                Nenhum kit estéril aguardando retirada para este aluno no momento.
-              </p>
+            {selectedStudentGrr && (
+               <div className="mt-3 flex items-center justify-between p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                 <div className="flex items-center gap-2">
+                   <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-[12px]">
+                     {students.find(s => s.grr === selectedStudentGrr)?.name?.charAt(0) || 'A'}
+                   </div>
+                   <div>
+                     <p className="text-[12px] font-bold text-blue-900">
+                       Exibindo apenas kits de: {students.find(s => s.grr === selectedStudentGrr)?.name || selectedStudentGrr}
+                     </p>
+                     <p className="text-[11px] text-blue-700 font-medium">
+                       GRR: {selectedStudentGrr} • Senha: {students.find(s => s.grr === selectedStudentGrr)?.numericPassword?.toString().padStart(3, '0') || '---'}
+                     </p>
+                   </div>
+                 </div>
+                 <button onClick={() => setSelectedStudentGrr('')} className="px-3 py-1.5 bg-white text-rose-600 border border-rose-200 rounded-lg text-[11px] font-bold hover:bg-rose-50 transition-colors cursor-pointer">
+                   Limpar Filtro
+                 </button>
+               </div>
             )}
           </div>
 
-          {/* 2. SEÇÃO: Kits / Marmitas em Uso pelo Aluno (Devolução) */}
-          <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-                <h3 className="text-[16px] font-bold text-slate-900">
-                  Kits em Posse / A Devolver ({currentlyInUseKits.length})
-                </h3>
+          {/* PAINEL 1: AGUARDANDO LIBERAÇÃO NO BALCÃO */}
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-white">
+                <span className="material-symbols-outlined text-[20px] text-amber-400">notifications_active</span>
+                <h3 className="text-[15px] font-bold">Solicitações Recebidas (Aguardando Liberação para CME)</h3>
               </div>
-              <span className="text-[11.5px] text-slate-500">
-                O aluno terminou o atendimento e veio devolver
+              <span className="bg-slate-800 text-slate-300 text-[11px] font-bold px-2 py-0.5 rounded-full">
+                {globalPendingReleaseKits.filter(k => !selectedStudentGrr || k.ownerStudentGrr === selectedStudentGrr || k.assignedTo === selectedStudentGrr).length} Pendente(s)
               </span>
             </div>
 
-            {currentlyInUseKits.length > 0 ? (
-              <div className="space-y-3">
-                {currentlyInUseKits.map((kit) => {
-                  const mWithdrawn = kit.marmitasWithdrawn ?? 1;
-                  const pWithdrawn = kit.pacotesWithdrawn ?? 0;
-                  const hasMultiple = mWithdrawn + pWithdrawn > 1;
+            {globalPendingReleaseKits.filter(k => !selectedStudentGrr || k.ownerStudentGrr === selectedStudentGrr || k.assignedTo === selectedStudentGrr).length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {globalPendingReleaseKits.filter(k => !selectedStudentGrr || k.ownerStudentGrr === selectedStudentGrr || k.assignedTo === selectedStudentGrr).map(kit => {
+                  const student = students.find(s => s.grr === kit.ownerStudentGrr || s.grr === kit.assignedTo);
+                  const studentName = student?.name || kit.ownerStudentName || 'Aluno Não Encontrado';
+                  const studentPin = student?.numericPassword?.toString().padStart(3, '0') || '---';
 
                   return (
-                    <div
-                      key={kit.id}
-                      className="p-4 rounded-xl border border-blue-200 bg-blue-50/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
-                    >
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono font-bold text-[13px] bg-slate-900 text-white px-2.5 py-0.5 rounded">
-                            {kit.code}
-                          </span>
-                          <h4 className="text-[15px] font-bold text-slate-900">{kit.name}</h4>
-                          <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[11px] font-bold rounded-full">
-                            Em Uso Clínico
-                          </span>
-                        </div>
-
-                        {/* Volumes em Posse */}
-                        <div className="flex items-center gap-2 flex-wrap text-[12px]">
-                          <span className="inline-flex items-center gap-1 font-semibold text-blue-950 bg-blue-100/70 border border-blue-200 px-2 py-0.5 rounded-md">
-                            <span className="material-symbols-outlined text-[15px]">inventory_2</span>
-                            {mWithdrawn} marmita(s) em posse
-                          </span>
-                          {pWithdrawn > 0 && (
-                            <span className="inline-flex items-center gap-1 font-semibold text-blue-950 bg-blue-100/70 border border-blue-200 px-2 py-0.5 rounded-md">
-                              <span className="material-symbols-outlined text-[15px]">medical_services</span>
-                              {pWithdrawn} pacote(s) em posse
-                            </span>
-                          )}
-                          <span className="text-slate-500">
-                            • Retirada: {kit.checkoutTime || 'Hoje'}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0 w-full md:w-auto flex-wrap">
-                        {hasMultiple && (
-                          <button
-                            onClick={() => handleOpenReturnModal(kit)}
-                            className="w-full md:w-auto px-3.5 py-2 border border-blue-600 bg-white hover:bg-blue-50 text-blue-800 rounded-xl text-[12.5px] font-bold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-[17px]">checklist</span>
-                            <span>Devolver Parcial</span>
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleQuickReturnAll(kit)}
-                          className="w-full md:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[13px] font-bold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">input</span>
-                          <span>{hasMultiple ? 'Devolver Tudo' : 'Receber Devolução'}</span>
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-[12.5px] text-slate-500 py-2 italic">
-                O acadêmico não possui nenhum kit ou marmita em aberto para devolução.
-              </p>
-            )}
-          </div>
-
-          {/* 3. SEÇÃO: Novos Kits Entregues para Esterilização */}
-          {pendingCMEKits.length > 0 && (
-            <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                  <h3 className="text-[16px] font-bold text-slate-900">
-                    Novos Kits / Marmitas Entregues para Esterilização ({pendingCMEKits.length})
-                  </h3>
-                </div>
-                <span className="text-[11.5px] text-slate-500">
-                  Cadastrados pelo aluno aguardando início de ciclo
-                </span>
-              </div>
-
-              <div className="space-y-3">
-                {pendingCMEKits.map((kit) => (
-                  <div
-                    key={kit.id}
-                    className="p-4 rounded-xl border border-amber-200 bg-amber-50/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-[13px] bg-slate-900 text-white px-2.5 py-0.5 rounded">
+                    <div key={kit.id} className="bg-slate-800 rounded-xl p-3.5 border border-slate-700 hover:border-slate-600 transition-colors cursor-pointer">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-mono text-[12px] font-bold text-blue-300 bg-blue-900/30 px-2 py-0.5 rounded">
                           {kit.code}
                         </span>
-                        <h4 className="text-[15px] font-bold text-slate-900">{kit.name}</h4>
-                        <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[11px] font-bold rounded-full">
-                          Aguardando Esterilização
+                        <span className="text-[10px] font-bold text-amber-300 uppercase tracking-wider">
+                          Aguardando
                         </span>
                       </div>
-                      <p className="text-[12px] text-slate-600">
-                        {kit.marmitasCount ?? 1} marmita(s) • {kit.pacotesCount ?? 0} pacote(s) • Categoria: <strong>{kit.category || 'Geral'}</strong>
-                      </p>
-                    </div>
+                      
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[13px]">
+                          <span className="text-slate-400 font-medium">Aluno:</span>
+                          <span className="text-white font-bold truncate max-w-[150px]" title={studentName}>{studentName}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[13px]">
+                          <span className="text-slate-400 font-medium">GRR:</span>
+                          <span className="text-slate-200 font-mono">{kit.ownerStudentGrr || kit.assignedTo}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[13px]">
+                          <span className="text-slate-400 font-medium">Senha:</span>
+                          <span className="text-amber-400 font-mono font-bold bg-amber-400/10 px-1.5 rounded">{studentPin}</span>
+                        </div>
+                      </div>
 
-                    <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
-                      <button
-                        onClick={() => handleConfirmNewKitForCME(kit)}
-                        className="w-full md:w-auto px-4 py-2.5 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-[13px] font-bold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">verified</span>
-                        <span>Confirmar Recebimento p/ Esterilização</span>
-                      </button>
+                      <div className="mt-3 pt-3 border-t border-slate-700/50 flex flex-col gap-2">
+                        <div className="flex items-center justify-between text-[11.5px] text-slate-300 font-medium">
+                          <div className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px]">lunch_dining</span>
+                            <span>{kit.marmitasCount || 0} marmita(s)</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px]">inventory</span>
+                            <span>{kit.pacotesCount || 0} pacote(s)</span>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 mt-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onUpdateKitStatus) {
+                                onUpdateKitStatus(kit.id, 'Decontaminated');
+                                setVerificationFeedback({
+                                  type: 'success',
+                                  message: `Solicitação ${kit.code} aprovada e enviada para esterilização.`
+                                });
+                                setTimeout(() => setVerificationFeedback(null), 4000);
+                              }
+                            }}
+                            className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11.5px] font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">check_circle</span>
+                            <span>Aprovar para CME</span>
+                          </button>
+                          
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenReproveModal(kit);
+                            }}
+                            className="flex-1 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-[11.5px] font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">cancel</span>
+                            <span>Reprovar</span>
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
+            ) : (
+              <div className="text-center py-6 border border-dashed border-slate-700 rounded-xl">
+                <span className="material-symbols-outlined text-slate-600 text-[24px] mb-1">done_all</span>
+                <p className="text-[12px] text-slate-500 font-medium">Nenhuma solicitação aguardando liberação.</p>
+              </div>
+            )}
+          </div>
+
+          {/* PAINEL 2: KITS EM ESTERILIZAÇÃO */}
+          <div className="bg-slate-50 border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-slate-800">
+                <span className="material-symbols-outlined text-[20px] text-blue-600">cleaning_services</span>
+                <h3 className="text-[15px] font-bold">Kits em Processo de Esterilização</h3>
+              </div>
+              <span className="bg-blue-100 text-blue-800 text-[11px] font-bold px-2 py-0.5 rounded-full">
+                {globalSterilizingKits.filter(k => !selectedStudentGrr || k.ownerStudentGrr === selectedStudentGrr || k.assignedTo === selectedStudentGrr).length} Esterilizando
+              </span>
             </div>
-          )}
-        </div>
-      ) : (
-        <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center text-slate-500">
-          <span className="material-symbols-outlined text-[36px] text-slate-400 mb-2">person_search</span>
-          <h4 className="text-[15px] font-bold text-slate-800">
-            Nenhum acadêmico selecionado
-          </h4>
-          <p className="text-[12.5px] text-slate-500 mt-1">
-            Digite o GRR ou clique em um dos alunos acima para iniciar a conferência das marmitas.
-          </p>
+
+            {globalSterilizingKits.filter(k => !selectedStudentGrr || k.ownerStudentGrr === selectedStudentGrr || k.assignedTo === selectedStudentGrr).length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {globalSterilizingKits.filter(k => !selectedStudentGrr || k.ownerStudentGrr === selectedStudentGrr || k.assignedTo === selectedStudentGrr).map(kit => {
+                  const student = students.find(s => s.grr === kit.ownerStudentGrr || s.grr === kit.assignedTo);
+                  const studentName = student?.name || kit.ownerStudentName || 'Aluno Não Encontrado';
+                  const studentPin = student?.numericPassword?.toString().padStart(3, '0') || '---';
+
+                  return (
+                    <div key={kit.id} className="bg-white rounded-xl p-3.5 border border-slate-200 shadow-xs hover:border-slate-300 transition-colors">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-mono text-[12px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+                          {kit.code}
+                        </span>
+                        <span className="text-[10px] font-bold text-blue-600 uppercase tracking-wider flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px] animate-spin">refresh</span>
+                          Esterilizando
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[13px]">
+                          <span className="text-slate-500 font-medium">Aluno:</span>
+                          <span className="text-slate-800 font-bold truncate max-w-[150px]" title={studentName}>{studentName}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[13px]">
+                          <span className="text-slate-500 font-medium">GRR:</span>
+                          <span className="text-slate-700 font-mono">{kit.ownerStudentGrr || kit.assignedTo}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[13px]">
+                          <span className="text-slate-500 font-medium">Senha:</span>
+                          <span className="text-amber-600 font-mono font-bold bg-amber-50 px-1.5 rounded border border-amber-100">{studentPin}</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 pt-3 border-t border-slate-100 flex flex-col gap-2">
+                        <div className="flex items-center justify-between text-[11.5px] text-slate-500 font-medium">
+                          <div className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px]">lunch_dining</span>
+                            <span>{kit.marmitasCount || 0} marmita(s)</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px]">inventory</span>
+                            <span>{kit.pacotesCount || 0} pacote(s)</span>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onSterilizeKit) {
+                              onSterilizeKit(kit.id);
+                              setVerificationFeedback({
+                                type: 'success',
+                                message: `Kit ${kit.code} finalizou a esterilização e está pronto para retirada.`
+                              });
+                              setTimeout(() => setVerificationFeedback(null), 5000);
+                            }
+                          }}
+                          className="mt-1 w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[11.5px] font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">task_alt</span>
+                          <span>Mudar para Pronto</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-6 border border-dashed border-slate-300 rounded-xl bg-white">
+                <span className="material-symbols-outlined text-slate-400 text-[24px] mb-1">cleaning_services</span>
+                <p className="text-[12px] text-slate-500 font-medium">Nenhum kit em processo de esterilização.</p>
+              </div>
+            )}
+          </div>
+
+          {/* PAINEL 3: PRONTOS PARA RETIRADA */}
+          <div className="bg-emerald-50/50 border border-emerald-200/60 rounded-2xl p-5 shadow-xs space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-emerald-900">
+                <span className="material-symbols-outlined text-[20px] text-emerald-600">inventory_2</span>
+                <h3 className="text-[15px] font-bold">Kits Prontos para Retirada</h3>
+              </div>
+              <span className="bg-emerald-100 text-emerald-800 text-[11px] font-bold px-2 py-0.5 rounded-full">
+                {kits.filter(k => (k.status === 'Ready' || k.status === 'Pronta') && (!selectedStudentGrr || k.ownerStudentGrr === selectedStudentGrr || k.assignedTo === selectedStudentGrr)).length} Pronto(s)
+              </span>
+            </div>
+
+            {kits.filter(k => (k.status === 'Ready' || k.status === 'Pronta') && (!selectedStudentGrr || k.ownerStudentGrr === selectedStudentGrr || k.assignedTo === selectedStudentGrr)).length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {kits.filter(k => (k.status === 'Ready' || k.status === 'Pronta') && (!selectedStudentGrr || k.ownerStudentGrr === selectedStudentGrr || k.assignedTo === selectedStudentGrr)).map(kit => {
+                  const student = students.find(s => s.grr === kit.ownerStudentGrr || s.grr === kit.assignedTo);
+                  const studentName = student?.name || kit.ownerStudentName || 'Aluno Não Encontrado';
+                  const studentPin = student?.numericPassword?.toString().padStart(3, '0') || '---';
+                  const mAvail = Math.max(0, (kit.marmitasCount ?? 1) - (kit.marmitasWithdrawn ?? 0));
+                  const pAvail = Math.max(0, (kit.pacotesCount ?? 0) - (kit.pacotesWithdrawn ?? 0));
+                  
+                  // Se não tem itens disponíveis, nem mostra
+                  if (mAvail === 0 && pAvail === 0) return null;
+
+                  return (
+                    <div key={kit.id} className="bg-white rounded-xl p-3.5 border border-emerald-200 shadow-xs hover:border-emerald-300 transition-colors">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-mono text-[12px] font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded">
+                          {kit.code}
+                        </span>
+                        <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px]">check_circle</span>
+                          Estéril / Pronto
+                        </span>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-[13px]">
+                          <span className="text-slate-500 font-medium">Aluno:</span>
+                          <span className="text-slate-800 font-bold truncate max-w-[150px]" title={studentName}>{studentName}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[13px]">
+                          <span className="text-slate-500 font-medium">GRR:</span>
+                          <span className="text-slate-700 font-mono">{kit.ownerStudentGrr || kit.assignedTo}</span>
+                        </div>
+                        <div className="flex items-center justify-between text-[13px]">
+                          <span className="text-slate-500 font-medium">Senha:</span>
+                          <span className="text-amber-600 font-mono font-bold bg-amber-50 px-1.5 rounded border border-amber-100">{studentPin}</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 pt-3 border-t border-slate-100 flex flex-col gap-2">
+                        <div className="flex items-center justify-between text-[11.5px] text-slate-600 font-semibold bg-emerald-50/50 p-1.5 rounded-lg border border-emerald-100">
+                          <div className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px] text-emerald-600">lunch_dining</span>
+                            <span>{mAvail} marmita(s) disp.</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <span className="material-symbols-outlined text-[14px] text-emerald-600">inventory</span>
+                            <span>{pAvail} pacote(s) disp.</span>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Select student globally so transaction works easily
+                            if (student) setSelectedStudentGrr(student.grr);
+                            setCounterWithdrawingKit(kit);
+                            setWithdrawMarmitasQty(mAvail > 0 ? mAvail : 0);
+                            setWithdrawPacotesQty(pAvail > 0 ? pAvail : 0);
+                          }}
+                          className="mt-1 w-full py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11.5px] font-bold flex items-center justify-center gap-1.5 transition-colors shadow-xs cursor-pointer"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">input</span>
+                          <span>Retirar Itens</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-6 border border-dashed border-emerald-200 rounded-xl bg-white">
+                <span className="material-symbols-outlined text-slate-400 text-[24px] mb-1">inventory_2</span>
+                <p className="text-[12px] text-slate-500 font-medium">Nenhum kit pronto para retirada.</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Histórico Simplificado das Conferências do Turno */}
-      <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs">
-        <div className="flex justify-between items-center pb-3 border-b border-slate-100 mb-3">
-          <h3 className="text-[15px] font-bold text-slate-900">
-            Últimas Conferências Realizadas Hoje
-          </h3>
-          <span className="text-[11.5px] text-slate-500">
-            {transactions.length} registros no plantão
-          </span>
-        </div>
-
-        {recentTransactions.length > 0 ? (
-          <div className="divide-y divide-slate-100 text-[12.5px]">
-            {recentTransactions.map((tx) => (
-              <div key={tx.id} className="py-2.5 flex items-center justify-between gap-4">
-                <div className="flex items-center gap-2.5">
-                  <span
-                    className={`px-2 py-0.5 rounded-full text-[11px] font-bold ${
-                      tx.action === 'Withdrawal'
-                        ? 'bg-emerald-100 text-emerald-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}
-                  >
-                    {tx.action === 'Withdrawal' ? 'Retirada Liberada' : 'Devolução Recebida'}
-                  </span>
-                  <span className="font-mono font-bold text-slate-800">{tx.kitId}</span>
-                  <span className="text-slate-400">•</span>
-                  <span className="text-slate-700">{tx.studentName || tx.grrCode}</span>
-                </div>
-                <span className="font-mono text-slate-400 text-[11.5px]">{tx.timestamp}</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-[12px] text-slate-400 italic py-2">
-            Nenhuma movimentação realizada ainda neste turno.
-          </p>
-        )}
-      </div>
-    </div>
-  )}
 
       {/* ========================================================================= */}
       {/* MODO 2: BOLETIM DE TURNO & LEVANTAMENTO PARA O ADMINISTRADOR              */}
@@ -1308,7 +1202,7 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
                       Aluno: <strong>{k.assignedStudentName || k.ownerStudentName}</strong> ({k.assignedTo || k.ownerStudentGrr})
                     </p>
                     <p className="text-[11px] text-amber-800">
-                      Clínica: {k.category || 'Odontologia Geral'} • Tempo decorrido: ~3.5 horas
+                      Tempo decorrido: ~3.5 horas
                     </p>
                   </div>
                   <span className="px-2.5 py-1 rounded-lg bg-amber-200 text-amber-900 text-[11px] font-bold shrink-0">
@@ -1572,6 +1466,7 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
                 </div>
               )}
 
+
               {/* Botões de Ação */}
               <div className="flex gap-2 pt-2">
                 <button
@@ -1588,142 +1483,6 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
                   className="w-1/2 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white rounded-xl text-[12.5px] font-bold shadow-xs cursor-pointer disabled:cursor-not-allowed transition-colors"
                 >
                   Confirmar Retirada
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* MODAL: DEVOLUÇÃO PARCIAL / TOTAL NO BALCÃO                                 */}
-      {/* ========================================================================= */}
-      {counterReturningKit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-150">
-            <div className="p-4.5 bg-blue-800 text-white flex justify-between items-center">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-700 flex items-center justify-center text-white">
-                  <span className="material-symbols-outlined text-[20px]">input</span>
-                </div>
-                <div>
-                  <h3 className="text-[16px] font-bold">Receber Devolução de Volumes</h3>
-                  <p className="text-[11px] text-blue-200">
-                    Defina quantos itens o acadêmico está devolvendo para limpeza
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setCounterReturningKit(null)}
-                className="text-blue-200 hover:text-white cursor-pointer p-1"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
-
-            <div className="p-5 space-y-4">
-              <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
-                <div className="flex justify-between items-center text-[12.5px]">
-                  <span className="font-mono font-bold text-blue-900">{counterReturningKit.code}</span>
-                  <span className="text-slate-600 font-medium">{counterReturningKit.name}</span>
-                </div>
-                <p className="text-[11.5px] text-blue-800 mt-1">
-                  Acadêmico: <strong>{currentStudent?.name}</strong> ({currentStudent?.grr})
-                </p>
-              </div>
-
-              {/* Seletor de Marmitas a Devolver */}
-              {(counterReturningKit.marmitasWithdrawn ?? 1) > 0 && (
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h4 className="text-[13px] font-bold text-slate-800">
-                        Marmitas Rígidas a Devolver
-                      </h4>
-                      <p className="text-[11px] text-slate-500">
-                        Atualmente em posse: <strong>{counterReturningKit.marmitasWithdrawn ?? 1}</strong>
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setReturnMarmitasQty((prev) => Math.max(0, prev - 1))}
-                        className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 font-bold hover:bg-slate-100 cursor-pointer"
-                      >
-                        -
-                      </button>
-                      <span className="w-8 text-center font-bold text-[15px] text-slate-900">
-                        {returnMarmitasQty}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const max = counterReturningKit.marmitasWithdrawn ?? 1;
-                          setReturnMarmitasQty((prev) => Math.min(max, prev + 1));
-                        }}
-                        className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 font-bold hover:bg-slate-100 cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Seletor de Pacotes a Devolver */}
-              {(counterReturningKit.pacotesWithdrawn ?? 0) > 0 && (
-                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h4 className="text-[13px] font-bold text-slate-800">
-                        Pacotes Macios a Devolver
-                      </h4>
-                      <p className="text-[11px] text-slate-500">
-                        Atualmente em posse: <strong>{counterReturningKit.pacotesWithdrawn ?? 0}</strong>
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setReturnPacotesQty((prev) => Math.max(0, prev - 1))}
-                        className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 font-bold hover:bg-slate-100 cursor-pointer"
-                      >
-                        -
-                      </button>
-                      <span className="w-8 text-center font-bold text-[15px] text-slate-900">
-                        {returnPacotesQty}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const max = counterReturningKit.pacotesWithdrawn ?? 0;
-                          setReturnPacotesQty((prev) => Math.min(max, prev + 1));
-                        }}
-                        className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 font-bold hover:bg-slate-100 cursor-pointer"
-                      >
-                        +
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Botões de Ação */}
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setCounterReturningKit(null)}
-                  className="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[12.5px] font-semibold cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  disabled={returnMarmitasQty <= 0 && returnPacotesQty <= 0}
-                  onClick={handleConfirmCounterReturn}
-                  className="w-1/2 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-xl text-[12.5px] font-bold shadow-xs cursor-pointer disabled:cursor-not-allowed transition-colors"
-                >
-                  Confirmar Devolução
                 </button>
               </div>
             </div>

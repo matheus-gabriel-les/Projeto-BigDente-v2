@@ -275,36 +275,6 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
     setTimeout(() => setActionFeedback(null), 5000);
   };
 
-  // Devolução Parcial ou Total de Itens Usados do Kit
-  const handleOpenReturnModal = (kit: Kit) => {
-    const withM = kit.marmitasWithdrawn || 0;
-    const withP = kit.pacotesWithdrawn || 0;
-    setReturningKit(kit);
-    setReturnMarmitas(withM > 0 ? withM : 0);
-    setReturnPacotes(withP > 0 ? withP : 0);
-  };
-
-  const handleConfirmReturn = () => {
-    if (!returningKit) return;
-    if (onExecuteTransaction) {
-      onExecuteTransaction({
-        studentGrr,
-        kitId: returningKit.code,
-        type: 'Return',
-        withdrawnMarmitas: returnMarmitas,
-        withdrawnPacotes: returnPacotes
-      });
-    }
-    const parts = [];
-    if (returnMarmitas > 0) parts.push(`${returnMarmitas} marmita(s)`);
-    if (returnPacotes > 0) parts.push(`${returnPacotes} pacote(s)`);
-    setActionFeedback(
-      `Devolução registrada: ${parts.join(' e ')} do kit ${returningKit.code} devolvidos e encaminhados para esterilização.`
-    );
-    setReturningKit(null);
-    setTimeout(() => setActionFeedback(null), 5000);
-  };
-
   return (
     <div className="space-y-6 max-w-6xl mx-auto pb-12">
       {/* ========================================================================= */}
@@ -717,13 +687,6 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                                   <span className="material-symbols-outlined text-[16px] text-amber-700">medical_services</span>
                                   <span>Em clínica: <strong>{withM > 0 ? `${withM} marmita(s)` : ''} {withP > 0 ? `${withP} pacote(s)` : ''}</strong></span>
                                 </span>
-                                <button
-                                  type="button"
-                                  onClick={() => handleOpenReturnModal(kit)}
-                                  className="px-2.5 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-md font-bold text-[11px] cursor-pointer shadow-2xs"
-                                >
-                                  Devolver Itens
-                                </button>
                               </div>
                             )}
 
@@ -855,27 +818,21 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                               <span className="material-symbols-outlined text-red-600 text-[18px]">gpp_bad</span>
                               <span>Solicitação Não Aprovada no Balcão:</span>
                             </div>
-                            <p className="text-red-700 leading-relaxed font-medium">
+                            <p className="text-red-700 leading-relaxed font-medium mb-2">
                               {kit.rejectionReason || kit.notes || 'Embalagem ou integridade dos volumes reprovada pela atendente.'}
                             </p>
-                            <p className="text-[11px] text-red-600 mt-1 font-semibold">
-                              Faça a adequação das marmitas/pacotes e reenvie para nova conferência.
-                            </p>
+                            <div className="bg-red-100/50 p-2 rounded border border-red-200 text-[11px] text-red-800 font-semibold flex items-start gap-1.5">
+                              <span className="material-symbols-outlined text-[16px] mt-0.5">warning</span>
+                              <span>Este kit foi bloqueado para reenvio. Dirija-a ao balcão para retirar os materiais reprovados, regularize-os e inicie uma nova solicitação.</span>
+                            </div>
                           </div>
 
                           <div className="flex items-center gap-2">
                             <button
-                              onClick={() => handleSendKitForRelease(kit)}
-                              className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[12px] font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-98"
-                            >
-                              <span className="material-symbols-outlined text-[17px]">send</span>
-                              <span>Reenviar para Liberação</span>
-                            </button>
-                            <button
                               onClick={() => setConfirmCancelKitId(kit.id)}
-                              className="px-3 py-2 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 rounded-xl text-[12px] font-medium cursor-pointer"
+                              className="w-full py-2 bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 rounded-xl text-[12px] font-bold cursor-pointer transition-colors shadow-xs"
                             >
-                              Cancelar
+                              Remover / Cancelar Solicitação
                             </button>
                           </div>
                         </div>
@@ -1014,16 +971,6 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
                               <div className="flex-1 py-2 bg-amber-50 border border-amber-200 text-amber-900 rounded-xl text-[12px] font-semibold text-center">
                                 Todos os itens já retirados para clínica
                               </div>
-                            )}
-
-                            {hasInUse && (
-                              <button
-                                onClick={() => handleOpenReturnModal(kit)}
-                                className="px-3 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-[12px] font-bold cursor-pointer"
-                                title="Devolver itens usados"
-                              >
-                                Devolver
-                              </button>
                             )}
 
                             <button
@@ -1672,145 +1619,6 @@ export const StudentPortalView: React.FC<StudentPortalViewProps> = ({
         </div>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL: DEVOLUÇÃO PARCIAL OU TOTAL DE VOLUMES USADOS                        */}
-      {/* ========================================================================= */}
-      {returningKit && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-150">
-            <div className="p-4.5 bg-amber-800 text-white flex justify-between items-center">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-amber-700 flex items-center justify-center text-white">
-                  <span className="material-symbols-outlined text-[20px]">assignment_return</span>
-                </div>
-                <div>
-                  <h3 className="text-[16px] font-bold">Devolução de Itens Usados</h3>
-                  <p className="text-[11px] text-amber-200">
-                    Registre os volumes usados para reprocessamento
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setReturningKit(null)}
-                className="text-amber-200 hover:text-white cursor-pointer p-1"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
-
-            <div className="p-5 space-y-4">
-              <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-[12px] text-amber-900">
-                Os volumes devolvidos serão recebidos no balcão e encaminhados para novo ciclo de esterilização.
-              </div>
-
-              {/* Marmitas em uso */}
-              {(() => {
-                const withM = returningKit.marmitasWithdrawn || 0;
-                return (
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                    <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-[13px] font-bold text-slate-800 flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-blue-600 text-[18px]">lunch_dining</span>
-                        <span>Marmitas em Uso Clínico</span>
-                      </span>
-                      <span className="text-[11.5px] font-semibold text-amber-800">
-                        {withM} em uso
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2">
-                      <span className="text-[12px] text-slate-600">Quantidade a devolver:</span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setReturnMarmitas(Math.max(0, returnMarmitas - 1))}
-                          disabled={returnMarmitas <= 0}
-                          className="w-8 h-8 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 font-bold text-slate-700 text-[16px] cursor-pointer flex items-center justify-center"
-                        >
-                          -
-                        </button>
-                        <span className="w-10 text-center font-bold text-[15px] text-slate-900">
-                          {returnMarmitas}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setReturnMarmitas(Math.min(withM, returnMarmitas + 1))}
-                          disabled={returnMarmitas >= withM}
-                          className="w-8 h-8 rounded-lg bg-amber-100 hover:bg-amber-200 disabled:opacity-40 font-bold text-amber-800 text-[16px] cursor-pointer flex items-center justify-center"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              {/* Pacotes em uso */}
-              {(() => {
-                const withP = returningKit.pacotesWithdrawn || 0;
-                return (
-                  <div className="bg-slate-50 border border-slate-200 rounded-xl p-3.5">
-                    <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-[13px] font-bold text-slate-800 flex items-center gap-1.5">
-                        <span className="material-symbols-outlined text-purple-600 text-[18px]">inventory</span>
-                        <span>Pacotes em Uso Clínico</span>
-                      </span>
-                      <span className="text-[11.5px] font-semibold text-amber-800">
-                        {withP} em uso
-                      </span>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2">
-                      <span className="text-[12px] text-slate-600">Quantidade a devolver:</span>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setReturnPacotes(Math.max(0, returnPacotes - 1))}
-                          disabled={returnPacotes <= 0}
-                          className="w-8 h-8 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 disabled:opacity-40 font-bold text-slate-700 text-[16px] cursor-pointer flex items-center justify-center"
-                        >
-                          -
-                        </button>
-                        <span className="w-10 text-center font-bold text-[15px] text-slate-900">
-                          {returnPacotes}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setReturnPacotes(Math.min(withP, returnPacotes + 1))}
-                          disabled={returnPacotes >= withP}
-                          className="w-8 h-8 rounded-lg bg-amber-100 hover:bg-amber-200 disabled:opacity-40 font-bold text-amber-800 text-[16px] cursor-pointer flex items-center justify-center"
-                        >
-                          +
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
-
-              <div className="pt-2 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleConfirmReturn}
-                  disabled={returnMarmitas === 0 && returnPacotes === 0}
-                  className="flex-1 py-2.5 bg-amber-700 hover:bg-amber-800 disabled:opacity-50 text-white rounded-xl text-[13px] font-bold flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-98"
-                >
-                  <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                  <span>Confirmar Devolução ({returnMarmitas + returnPacotes} itens)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReturningKit(null)}
-                  className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[12.5px] font-semibold cursor-pointer"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
