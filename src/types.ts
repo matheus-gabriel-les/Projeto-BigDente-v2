@@ -28,7 +28,17 @@ export interface UserProfile {
   badgeColor: string;
 }
 
-export type KitStatus = 'Ready' | 'In Use' | 'Expiring' | 'Expired' | 'Decontaminated';
+export type KitStatus =
+  | 'Ready'
+  | 'In Use'
+  | 'Expiring'
+  | 'Expired'
+  | 'Decontaminated'
+  | 'Pronta'
+  | 'Esterilizando'
+  | 'Aguardando Liberação'
+  | 'Vencida'
+  | 'Reprovado';
 
 export interface Kit {
   id: string;
@@ -48,9 +58,14 @@ export interface Kit {
   checkoutTime?: string;
   items?: string[];
   notes?: string;
+  rejectionReason?: string; // Motivo caso seja reprovado pela atendente no balcão
   category?: 'Cirurgia' | 'Periodontia' | 'Endodontia' | 'Dentística' | 'Prótese' | 'Pediatria' | 'Geral';
   autoclaveCycleId?: string;
   biologicalTestResult?: 'Negativo (Aprovado)' | 'Pendente' | 'Positivo (Falha)';
+  marmitasCount?: number; // x número de marmitas (itens como bisturis, etc.)
+  pacotesCount?: number;  // y número de pacotes (itens moles como capas de cirurgia, etc.)
+  marmitasWithdrawn?: number; // marmitas retiradas em uso clínico
+  pacotesWithdrawn?: number;  // pacotes retirados em uso clínico
 }
 
 export interface Student {
@@ -59,6 +74,7 @@ export interface Student {
   email: string;
   grr: string; // Matrícula de 8 dígitos
   code: string; // Código de 3 letras
+  numericPassword: number; // Senha numérica de 3 dígitos (0 a 400) atrelada ao aluno no início do curso
   status: 'Active' | 'Inactive';
   course: string;
   avatarInitials: string;
@@ -88,6 +104,8 @@ export interface Transaction {
   status: 'IN USE' | 'STERILE' | 'EXPIRED' | 'FLAGGED';
   operatorName?: string;
   notes?: string;
+  withdrawnMarmitas?: number;
+  withdrawnPacotes?: number;
 }
 
 export interface ActionAlert {

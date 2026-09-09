@@ -30,7 +30,7 @@ export const HelpView: React.FC = () => {
             Como podemos te orientar?
           </h2>
           <p className="text-[15px] text-slate-300 mb-6">
-            Consulte manuais de autoclave, regras de retirada de marmitas e normas de biossegurança.
+            Consulte manuais de esterilização, regras de retirada de marmitas e normas de biossegurança.
           </p>
 
           <div className="relative w-full shadow-lg">
@@ -41,7 +41,7 @@ export const HelpView: React.FC = () => {
               type="text"
               value={helpSearch}
               onChange={(e) => setHelpSearch(e.target.value)}
-              placeholder="ex: 'Protocolo de autoclave', 'Registro de GRR', 'Descontaminação'..."
+              placeholder="ex: 'Protocolo de esterilização', 'Registro de GRR', 'Descontaminação'..."
               className="w-full bg-white text-slate-900 border-0 rounded-2xl py-4 pl-12 pr-4 text-[15px] focus:outline-hidden focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400 shadow-xs transition-all"
             />
           </div>

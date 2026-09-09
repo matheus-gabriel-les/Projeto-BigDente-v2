@@ -179,7 +179,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
                 <div className="flex items-center gap-2.5">
                   <span className="material-symbols-outlined text-emerald-600 text-[20px]">check_circle</span>
-                  <span className="text-[13px] font-medium text-slate-700">Conformidade das Autoclaves</span>
+                  <span className="text-[13px] font-medium text-slate-700">Máquinas de Esterilização</span>
                 </div>
                 <span className="text-[12px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
                   100% Em Dia
@@ -189,7 +189,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
                 <div className="flex items-center gap-2.5">
                   <span className="material-symbols-outlined text-amber-600 text-[20px]">schedule</span>
-                  <span className="text-[13px] font-medium text-slate-700">Marmitas na Autoclave</span>
+                  <span className="text-[13px] font-medium text-slate-700">Marmitas em Esterilização</span>
                 </div>
                 <span className="text-[14px] font-bold text-amber-700">{cmeKitsCount} em ciclo</span>
               </div>
@@ -315,7 +315,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="overflow-x-auto flex-1">
               {inUseKits.length === 0 ? (
                 <div className="p-6 text-center text-slate-500 text-[13px]">
-                  Nenhuma marmita em posse externa no momento. Todo o acervo está no almoxarifado ou CME.
+                  Nenhuma marmita em posse externa no momento. Todo o acervo está no almoxarifado ou no setor de esterilização.
                 </div>
               ) : (
                 <table className="w-full text-left border-collapse">

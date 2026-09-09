@@ -28,7 +28,7 @@ export const KitInventoryView: React.FC<KitInventoryViewProps> = ({
     status: 'Ready' as Kit['status'],
     validityDays: 15,
     itemsText: 'Cabo de Bisturi nº 3, Espelho Clínico nº 5, Sonda Exploradora nº 5, Pinça Clínica',
-    notes: 'Esterilizado em Autoclave Câmara A (134°C - 4min)'
+    notes: 'Esterilizado na Máquina de Esterilização A (134°C - 4min)'
   });
 
   const readyCount = kits.filter((k) => k.status === 'Ready').length;
@@ -78,7 +78,7 @@ export const KitInventoryView: React.FC<KitInventoryViewProps> = ({
       status: 'Ready',
       validityDays: 15,
       itemsText: 'Cabo de Bisturi nº 3, Espelho Clínico nº 5, Sonda Exploradora nº 5, Pinça Clínica',
-      notes: 'Esterilizado em Autoclave Câmara A (134°C - 4min)'
+      notes: 'Esterilizado na Máquina de Esterilização A (134°C - 4min)'
     });
     setShowRegisterModal(false);
   };
@@ -274,7 +274,7 @@ export const KitInventoryView: React.FC<KitInventoryViewProps> = ({
                 ) : (
                   <>
                     <div className="flex justify-between items-center text-[12px]">
-                      <span className="text-slate-400 font-medium">Última Autoclave:</span>
+                      <span className="text-slate-400 font-medium">Última Esterilização:</span>
                       <span className="font-medium text-slate-700">
                         {kit.lastSterilized}
                       </span>
@@ -337,7 +337,7 @@ export const KitInventoryView: React.FC<KitInventoryViewProps> = ({
                       className="bg-rose-600 text-white px-3.5 py-1.5 rounded-xl text-[12px] font-medium hover:bg-rose-700 transition-colors flex items-center gap-1 cursor-pointer shadow-xs"
                     >
                       <span className="material-symbols-outlined text-[15px]">sync</span>
-                      <span>Autoclave</span>
+                      <span>Esterilizar</span>
                     </button>
                   )}
 
@@ -432,7 +432,7 @@ export const KitInventoryView: React.FC<KitInventoryViewProps> = ({
                 }}
                 className="px-4 py-2.5 rounded-xl bg-blue-600 text-white text-[12px] font-medium hover:bg-blue-700 transition-colors cursor-pointer"
               >
-                Renovar Ciclo de Autoclave (15 Dias)
+                Renovar Ciclo de Esterilização (15 Dias)
               </button>
               <button
                 onClick={() => setSelectedKitForDetails(null)}
@@ -512,7 +512,7 @@ export const KitInventoryView: React.FC<KitInventoryViewProps> = ({
                   type="submit"
                   className="px-4 py-2.5 rounded-xl bg-slate-900 text-white text-[13px] font-medium hover:bg-slate-800 shadow-xs cursor-pointer"
                 >
-                  Salvar e Gerar Código de Barras
+                  Salvar e Registrar Kit
                 </button>
               </div>
             </form>
@@ -526,7 +526,7 @@ export const KitInventoryView: React.FC<KitInventoryViewProps> = ({
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl p-6 border border-slate-200">
             <h3 className="text-[17px] font-semibold text-slate-900 mb-2">Ações de Esterilização em Lote</h3>
             <p className="text-[13px] text-slate-500 mb-4">
-              Disparar ciclos de autoclave para múltiplos kits simultaneamente.
+              Disparar ciclos de esterilização para múltiplos kits simultaneamente.
             </p>
             <div className="space-y-2">
               <button

@@ -118,7 +118,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     // Sheet 1: Resumo Executivo
     const resumoData = [
       ['RELATÓRIO DE GESTÃO E CONFORMIDADE SANITÁRIA - ODONTOLOGIA'],
-      ['Tipo de Relatório:', currentType === 'Monthly' ? 'Consolidado Mensal' : currentType === 'Daily' ? 'Diário Balcão' : currentType === 'Weekly' ? 'Semanal' : currentType === 'Sterilization' ? 'Laudos CME' : currentType === 'Almoxarifado' ? 'Levantamento Almoxarifado' : 'Auditoria'],
+      ['Tipo de Relatório:', currentType === 'Monthly' ? 'Consolidado Mensal' : currentType === 'Daily' ? 'Diário Balcão' : currentType === 'Weekly' ? 'Semanal' : currentType === 'Sterilization' ? 'Laudos de Esterilização' : currentType === 'Almoxarifado' ? 'Levantamento Almoxarifado' : 'Auditoria'],
       ['Período Referência:', currentType === 'Monthly' ? selectedMonth : currentDateStr],
       ['Data de Emissão:', currentDateStr],
       ['Emitido por:', 'Sistema LabControl - Coordenação e Gestão de Odontologia'],
@@ -128,11 +128,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       ['Total de Marmitas Cadastradas', kits.length, 'Acervo patrimonial ativo'],
       ['Marmitas Prontas (Estéreis)', readyKits.length, 'Disponíveis no balcão'],
       ['Marmitas em Uso Clínico', inUseKits.length, 'Em posse dos acadêmicos'],
-      ['Marmitas em Esterilização / Autoclave', decontaminatedKits.length, 'CME em processamento'],
+      ['Marmitas em Esterilização', decontaminatedKits.length, 'Setor de esterilização em processamento'],
       ['Alertas de Validade (Vencidas / A vencer)', alertKits.length, 'Requer re-esterilização'],
       ['Total de Acadêmicos Matriculados', students.length, 'Alunos no sistema'],
       ['Acadêmicos Habilitados para Retirada', students.filter((s) => s.status === 'Active').length, 'Regularizados'],
-      ['Ciclos de Autoclave Registrados', initialAutoclaveCycles.length, 'Conformidade ANVISA RDC 15'],
+      ['Ciclos de Esterilização Registrados', initialAutoclaveCycles.length, 'Conformidade ANVISA RDC 15'],
       ['Aprovação em Indicadores Biológicos', '100%', 'G. stearothermophilus negativado'],
       ['Boletins do Almoxarifado Registrados', almoxarifadoReports.length, 'Levantamentos operacionais enviados'],
     ];
@@ -144,14 +144,14 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       'Código da Marmita': k.code,
       'Identificação': k.name,
       'Especialidade': k.category || 'Geral',
-      'Status': k.status === 'Ready' ? 'Pronta / Estéril' : k.status === 'In Use' ? 'Em Uso Clínico' : k.status === 'Expired' ? 'Vencida' : k.status === 'Expiring' ? 'A Vencer' : 'Na CME',
+      'Status': k.status === 'Ready' ? 'Pronta / Estéril' : k.status === 'In Use' ? 'Em Uso Clínico' : k.status === 'Expired' ? 'Vencida' : k.status === 'Expiring' ? 'A Vencer' : 'Em Esterilização',
       'Validade (Dias Restantes)': k.validityDays,
       'Última Esterilização': k.lastSterilized,
       'Ciclos Acumulados': k.cyclesLogged,
       'Aluno Proprietário': k.ownerStudentName || 'Universidade',
       'GRR Proprietário': k.ownerStudentGrr || '-',
       'Em Posse de': k.assignedStudentName || '-',
-      'Ciclo Autoclave': k.autoclaveCycleId || '-',
+      'Ciclo Esterilização': k.autoclaveCycleId || '-',
       'Teste Biológico': k.biologicalTestResult || 'Aprovado',
       'Tipo de Recipiente': k.boxMaterial || 'Caixa Inox Perfurada',
     }));
@@ -173,7 +173,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
     const wsTrans = XLSX.utils.json_to_sheet(transactionsSheetData);
     XLSX.utils.book_append_sheet(wb, wsTrans, 'Movimentacoes Balcao');
 
-    // Sheet 4: Laudos Técnicos de Esterilização (CME)
+    // Sheet 4: Laudos Técnicos de Esterilização
     const cmeSheetData = initialAutoclaveCycles.map((c) => ({
       'Nº Ciclo': c.cycleNumber,
       'Equipamento': c.chamberId,
@@ -188,7 +188,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       'Resultado ANVISA': c.status,
     }));
     const wsCME = XLSX.utils.json_to_sheet(cmeSheetData);
-    XLSX.utils.book_append_sheet(wb, wsCME, 'Laudos Autoclave');
+    XLSX.utils.book_append_sheet(wb, wsCME, 'Laudos Esterilizacao');
 
     // Sheet 5: Levantamentos Enviados pelo Almoxarifado
     if (almoxarifadoReports.length > 0) {
@@ -232,7 +232,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
         : currentType === 'Weekly'
         ? `Relatorio-Semanal-Operacao`
         : currentType === 'Sterilization'
-        ? `Laudos-Esterilizacao-CME`
+        ? `Laudos-Esterilizacao`
         : currentType === 'Almoxarifado'
         ? `Levantamento-Almoxarifado-Plantao`
         : `Auditoria-Acervo-Custodia`;
@@ -270,7 +270,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               {reportType === 'Monthly' && 'Consolidado Mensal Oficial'}
               {reportType === 'Daily' && 'Balanço Diário em Tempo Real'}
               {reportType === 'Weekly' && 'Consolidado Semanal de Clínicas'}
-              {reportType === 'Sterilization' && 'Laudos Técnicos CME (RDC 15 ANVISA)'}
+              {reportType === 'Sterilization' && 'Laudos Técnicos (RDC 15 ANVISA)'}
               {reportType === 'Almoxarifado' && 'Levantamento Operacional do Almoxarifado'}
               {reportType === 'Audits' && 'Auditoria de Custódia & Responsabilidade'}
             </span>
@@ -278,7 +278,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               {reportType === 'Monthly' && `Mês Referência: ${selectedMonth}`}
               {reportType === 'Daily' && `Data: ${new Date().toLocaleDateString('pt-BR')}`}
               {reportType === 'Weekly' && selectedWeek}
-              {reportType === 'Sterilization' && 'Autoclaves Cristófoli 01 & 02'}
+              {reportType === 'Sterilization' && 'Máquinas de Esterilização 01 & 02'}
               {reportType === 'Almoxarifado' && `${almoxarifadoReports.length} boletins registrados`}
               {reportType === 'Audits' && `${students.length} acadêmicos monitorados`}
             </span>
@@ -288,7 +288,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             {reportType === 'Monthly' && 'Relatório Mensal de Gestão & Conformidade'}
             {reportType === 'Daily' && 'Relatório Diário do Terminal de Atendimento'}
             {reportType === 'Weekly' && 'Relatório Semanal de Giro & Produtividade'}
-            {reportType === 'Sterilization' && 'Laudos Técnicos de Esterilização & CME'}
+            {reportType === 'Sterilization' && 'Laudos Técnicos do Setor de Esterilização'}
             {reportType === 'Almoxarifado' && 'Levantamento e Boletins do Almoxarifado'}
             {reportType === 'Audits' && 'Auditoria de Custódia e Alunos em Clínica'}
           </h2>
@@ -297,7 +297,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             {reportType === 'Monthly' && 'Consolidação mensal com gráficos de giro, taxas de esterilização e exportação direta em planilha XLSX.'}
             {reportType === 'Daily' && 'Movimentações registradas no balcão hoje: saídas liberadas, devoluções recebidas e conformidade.'}
             {reportType === 'Weekly' && 'Distribuição semanal por turnos, taxa de retorno no mesmo dia e balanço cirúrgico.'}
-            {reportType === 'Sterilization' && 'Rastreabilidade de ciclos de autoclave, testes com esporos biológicos e indicadores químicos.'}
+            {reportType === 'Sterilization' && 'Rastreabilidade de ciclos de esterilização, testes com esporos biológicos e indicadores químicos.'}
             {reportType === 'Almoxarifado' && 'Dados fornecidos pelo atendente: avarias de caixas, retenções em atraso e consumo de insumos.'}
             {reportType === 'Audits' && 'Controle acadêmico por matrícula (GRR), localização das marmitas e situação regular.'}
           </p>
@@ -336,9 +336,9 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
               onChange={(e) => setSterilChamberFilter(e.target.value as any)}
               className="bg-slate-50 border border-slate-200 text-slate-800 px-3 py-2 rounded-xl text-[13px] font-semibold cursor-pointer focus:bg-white focus:border-emerald-500 focus:outline-hidden"
             >
-              <option value="all">Todas as Autoclaves</option>
-              <option value="Cristófoli 01">Cristófoli 01 (Chamber A)</option>
-              <option value="Cristófoli 02">Cristófoli 02 (Chamber B)</option>
+              <option value="all">Todas as Máquinas de Esterilização</option>
+              <option value="Cristófoli 01">Máquina 01 (Cristófoli A)</option>
+              <option value="Cristófoli 02">Máquina 02 (Cristófoli B)</option>
             </select>
           )}
 
@@ -441,7 +441,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
           }`}
         >
           <span className="material-symbols-outlined text-[18px]">precision_manufacturing</span>
-          <span>4. Laudos CME (Autoclaves)</span>
+          <span>4. Laudos de Esterilização</span>
         </button>
 
         <button
@@ -528,11 +528,11 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
 
             <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs">
               <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                Ciclos Totais de Autoclave
+                Ciclos Totais de Esterilização
               </span>
               <div className="text-[28px] font-bold text-slate-900 mt-1">428 Ciclos</div>
               <p className="text-[12px] text-slate-500 mt-1">
-                Cristófoli 01 &amp; 02 em operação
+                Máquinas 01 &amp; 02 em operação
               </p>
             </div>
 
@@ -691,7 +691,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 {transactions.filter((t) => t.action === 'Return').length} Devolvidas
               </div>
               <p className="text-[12px] text-emerald-700 font-medium mt-1">
-                Encaminhadas para expurgo e autoclave
+                Encaminhadas para expurgo e esterilização
               </p>
             </div>
 
@@ -835,8 +835,8 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                   <tr>
                     <th className="py-3 px-5">Dia da Semana</th>
                     <th className="py-3 px-5">Retiradas Balcão</th>
-                    <th className="py-3 px-5">Devoluções CME</th>
-                    <th className="py-3 px-5">Ciclos de Autoclave</th>
+                    <th className="py-3 px-5">Devoluções p/ Esterilização</th>
+                    <th className="py-3 px-5">Ciclos de Esterilização</th>
                     <th className="py-3 px-5">Saldo Ativo</th>
                     <th className="py-3 px-5">Conformidade</th>
                   </tr>
@@ -870,18 +870,18 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
       )}
 
       {/* ========================================================================= */}
-      {/* 4. LAUDOS DE ESTERILIZAÇÃO (Sterilization CME)                            */}
+      {/* 4. LAUDOS DE ESTERILIZAÇÃO                                                */}
       {/* ========================================================================= */}
       {reportType === 'Sterilization' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="bg-white border border-slate-200/90 p-5 rounded-2xl shadow-xs">
               <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                Autoclaves em Operação
+                Máquinas de Esterilização em Operação
               </span>
               <div className="text-[28px] font-bold text-slate-900 mt-1">2 Equipamentos</div>
               <p className="text-[12px] text-emerald-600 font-medium mt-1">
-                ✓ Cristófoli 01 e Cristófoli 02 calibradas
+                ✓ Máquinas 01 e 02 calibradas
               </p>
             </div>
 
@@ -910,7 +910,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
             <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
               <div>
                 <h3 className="text-[16px] font-bold text-slate-900">
-                  Laudos Técnicos dos Ciclos de Autoclave ({filteredAutoclaveCycles.length} ciclos)
+                  Laudos Técnicos dos Ciclos de Esterilização ({filteredAutoclaveCycles.length} ciclos)
                 </h3>
                 <p className="text-[12px] text-slate-500">
                   Rastreabilidade física, química e biológica conforme ANVISA RDC 15/2012.
@@ -1149,7 +1149,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({
                 Levantamento e Boletins Operacionais do Almoxarifado
               </h3>
               <p className="text-[13px] text-amber-900 mt-0.5">
-                Consolidação dos dados que o usuário do almoxarifado fornece ao administrador: avarias identificadas nas marmitas, retenções em atraso, consumo de insumos na CME e parecer de turno.
+                Consolidação dos dados que o usuário do almoxarifado fornece ao administrador: avarias identificadas nas marmitas, retenções em atraso, consumo de insumos na esterilização e parecer de turno.
               </p>
             </div>
 

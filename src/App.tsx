@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { TabType, Student, Kit, Transaction, ActionAlert, UserProfile, AlmoxarifadoShiftReport } from './types';
+import { TabType, Student, Kit, KitStatus, Transaction, ActionAlert, UserProfile, AlmoxarifadoShiftReport } from './types';
 import {
   initialStudents,
   initialKits,
@@ -108,7 +108,43 @@ export default function App() {
       id: `kit-${Date.now()}`
     };
     setKits([newKit, ...kits]);
-    showToast(`Marmita/Kit registrado com sucesso: ${newKit.code} (${newKit.name})`);
+    showToast(`Kit registrado com sucesso: ${newKit.code} (${newKit.name})`);
+  };
+
+  // Update kit status handler
+  const handleUpdateKitStatus = (kitId: string, newStatus: KitStatus, reason?: string) => {
+    setKits(
+      kits.map((k) => {
+        if (k.id === kitId || k.code === kitId) {
+          return {
+            ...k,
+            status: newStatus,
+            rejectionReason:
+              newStatus === 'Reprovado'
+                ? reason || 'Solicitação recusada pela atendente no balcão de conferência.'
+                : undefined,
+            notes:
+              newStatus === 'Aguardando Liberação'
+                ? 'Enviado pelo acadêmico. Aguardando conferência e liberação no balcão.'
+                : newStatus === 'Reprovado'
+                ? `Reprovado no balcão: ${reason || 'Não conforme para esterilização'}`
+                : k.notes
+          };
+        }
+        return k;
+      })
+    );
+    showToast(
+      newStatus === 'Reprovado'
+        ? `Solicitação do kit reprovada com sucesso.`
+        : `Status do kit atualizado para: ${newStatus}`
+    );
+  };
+
+  // Delete/Cancel kit handler
+  const handleDeleteKit = (kitId: string) => {
+    setKits(kits.filter((k) => k.id !== kitId && k.code !== kitId));
+    showToast(`Kit cancelado/removido do sistema.`);
   };
 
   // Sterilize kit handler
@@ -122,7 +158,9 @@ export default function App() {
             status: 'Ready',
             validityDays: 15,
             cyclesLogged: k.cyclesLogged + 1,
-            lastSterilized: today
+            lastSterilized: today,
+            marmitasWithdrawn: 0,
+            pacotesWithdrawn: 0
           };
         }
         return k;
@@ -131,16 +169,16 @@ export default function App() {
 
     // Remove from alerts if present
     setAlerts(alerts.filter((a) => a.kitId !== kitId && a.id !== kitId));
-    showToast(`Ciclo de autoclave concluído para a marmita. Validade renovada para 15 dias.`);
+    showToast(`Esterilização concluída com sucesso! Validade renovada para 15 dias.`);
   };
 
   // Queue restock handler
   const handleQueueRestock = (kitId: string) => {
     handleSterilizeKit(kitId);
-    showToast(`Kit encaminhado para expurgo, lavagem ultrassônica e ciclo de autoclave.`);
+    showToast(`Kit encaminhado para o setor de limpeza e esterilização.`);
   };
 
-  // Send kit to CME from student handler
+  // Send kit to sterilization from student handler
   const handleSendKitToCME = (kitId: string) => {
     setKits(
       kits.map((k) => {
@@ -148,24 +186,29 @@ export default function App() {
           return {
             ...k,
             status: 'Decontaminated',
-            notes: 'Entregue na CME pelo acadêmico. Aguardando autoclave.'
+            lastSterilized: 'Em esterilização',
+            notes: 'Entregue pelo acadêmico. Em processo de esterilização.'
           };
         }
         return k;
       })
     );
-    showToast(`Marmita entregue na CME com sucesso para ciclo de autoclave.`);
+    showToast(`Kit entregue com sucesso no setor de esterilização.`);
   };
 
   // Execute transaction (Withdrawal or Return)
   const handleExecuteTransaction = ({
     studentGrr,
     kitId,
-    type
+    type,
+    withdrawnMarmitas,
+    withdrawnPacotes
   }: {
     studentGrr: string;
     kitId: string;
     type: 'Withdrawal' | 'Return';
+    withdrawnMarmitas?: number;
+    withdrawnPacotes?: number;
   }) => {
     const matchedStudent = students.find(
       (s) => s.grr === studentGrr || s.code === studentGrr
@@ -180,6 +223,32 @@ export default function App() {
       hour12: false
     });
 
+    const totalM = matchedKit?.marmitasCount ?? 1;
+    const totalP = matchedKit?.pacotesCount ?? 0;
+    const currentWithdrawnM = matchedKit?.marmitasWithdrawn || 0;
+    const currentWithdrawnP = matchedKit?.pacotesWithdrawn || 0;
+
+    let newWithdrawnM = currentWithdrawnM;
+    let newWithdrawnP = currentWithdrawnP;
+    let actionNotes = '';
+
+    if (type === 'Withdrawal') {
+      const toWithdrawM = withdrawnMarmitas !== undefined ? withdrawnMarmitas : Math.max(0, totalM - currentWithdrawnM);
+      const toWithdrawP = withdrawnPacotes !== undefined ? withdrawnPacotes : Math.max(0, totalP - currentWithdrawnP);
+      newWithdrawnM = Math.min(totalM, currentWithdrawnM + toWithdrawM);
+      newWithdrawnP = Math.min(totalP, currentWithdrawnP + toWithdrawP);
+      actionNotes = `Retirada: ${toWithdrawM} marmita(s) e ${toWithdrawP} pacote(s).`;
+    } else {
+      const toReturnM = withdrawnMarmitas !== undefined ? withdrawnMarmitas : currentWithdrawnM;
+      const toReturnP = withdrawnPacotes !== undefined ? withdrawnPacotes : currentWithdrawnP;
+      newWithdrawnM = Math.max(0, currentWithdrawnM - toReturnM);
+      newWithdrawnP = Math.max(0, currentWithdrawnP - toReturnP);
+      actionNotes = `Devolução: ${toReturnM} marmita(s) e ${toReturnP} pacote(s).`;
+    }
+
+    const isFullyWithdrawn = (newWithdrawnM >= totalM) && (newWithdrawnP >= totalP);
+    const isNoneWithdrawn = (newWithdrawnM === 0) && (newWithdrawnP === 0);
+
     const newTx: Transaction = {
       id: `tx-${Date.now()}`,
       timestamp: `${currentTime}`,
@@ -188,7 +257,10 @@ export default function App() {
       kitName: matchedKit ? matchedKit.name : undefined,
       grrCode: matchedStudent ? matchedStudent.grr : studentGrr,
       studentName: matchedStudent ? matchedStudent.name : undefined,
-      status: type === 'Withdrawal' ? 'IN USE' : 'STERILE'
+      status: type === 'Withdrawal' ? (isFullyWithdrawn ? 'IN USE' : 'STERILE') : 'STERILE',
+      withdrawnMarmitas: withdrawnMarmitas,
+      withdrawnPacotes: withdrawnPacotes,
+      notes: actionNotes
     };
 
     setTransactions([newTx, ...transactions]);
@@ -200,10 +272,12 @@ export default function App() {
           if (k.id === matchedKit.id) {
             return {
               ...k,
-              status: type === 'Withdrawal' ? 'In Use' : 'Ready',
-              assignedTo: type === 'Withdrawal' ? matchedStudent?.code || 'ACAD' : undefined,
-              assignedStudentName: type === 'Withdrawal' ? matchedStudent?.name : undefined,
-              checkoutTime: type === 'Withdrawal' ? currentTime : undefined
+              marmitasWithdrawn: newWithdrawnM,
+              pacotesWithdrawn: newWithdrawnP,
+              status: isFullyWithdrawn ? 'In Use' : 'Ready',
+              assignedTo: isNoneWithdrawn ? undefined : (matchedStudent?.code || 'ACAD'),
+              assignedStudentName: isNoneWithdrawn ? undefined : matchedStudent?.name,
+              checkoutTime: isNoneWithdrawn ? undefined : (k.checkoutTime || currentTime)
             };
           }
           return k;
@@ -340,6 +414,7 @@ export default function App() {
               transactions={transactions}
               onExecuteTransaction={handleExecuteTransaction}
               onSendKitToCME={handleSendKitToCME}
+              onUpdateKitStatus={handleUpdateKitStatus}
               activeProfile={activeProfile}
             />
           )}
@@ -352,7 +427,10 @@ export default function App() {
               kits={kits}
               onRegisterKit={handleRegisterKit}
               onSendKitToCME={handleSendKitToCME}
+              onUpdateKitStatus={handleUpdateKitStatus}
+              onDeleteKit={handleDeleteKit}
               onOpenNewWithdrawal={() => setIsNewWithdrawalOpen(true)}
+              onExecuteTransaction={handleExecuteTransaction}
             />
           )}
 

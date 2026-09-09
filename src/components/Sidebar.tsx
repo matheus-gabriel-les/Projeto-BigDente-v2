@@ -26,8 +26,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'reports', label: 'Relatórios & Auditoria', icon: 'analytics', roles: ['admin'] },
     { id: 'reception', label: 'Almoxarifado & Balcão', icon: 'verified_user', roles: ['receptionist'] },
     { id: 'protocol', label: 'Terminal Scanner', icon: 'receipt_long', roles: ['receptionist'] },
-    { id: 'student_space', label: 'Minhas Marmitas', icon: 'inventory_2', roles: ['student'] },
-    { id: 'student_available', label: 'Marmitas Prontas na CME', icon: 'verified', roles: ['student'] },
+    { id: 'student_space', label: 'Meus Kits e Marmitas', icon: 'inventory_2', roles: ['student'] },
+    { id: 'student_available', label: 'Kits Prontos para Retirada', icon: 'verified', roles: ['student'] },
   ];
 
   // Filter items according to active profile allowed tabs

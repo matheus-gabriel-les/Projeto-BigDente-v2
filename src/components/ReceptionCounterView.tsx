@@ -5,8 +5,15 @@ interface ReceptionCounterViewProps {
   students: Student[];
   kits: Kit[];
   transactions: Transaction[];
-  onExecuteTransaction: (params: { studentGrr: string; kitId: string; type: 'Withdrawal' | 'Return' }) => void;
+  onExecuteTransaction: (params: {
+    studentGrr: string;
+    kitId: string;
+    type: 'Withdrawal' | 'Return';
+    withdrawnMarmitas?: number;
+    withdrawnPacotes?: number;
+  }) => void;
   onSendKitToCME?: (kitId: string) => void;
+  onUpdateKitStatus?: (kitId: string, status: KitStatus, rejectionReason?: string) => void;
   activeProfile: UserProfile;
   almoxarifadoReports?: AlmoxarifadoShiftReport[];
   onSaveAlmoxarifadoReport?: (report: AlmoxarifadoShiftReport) => void;
@@ -18,6 +25,7 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
   transactions,
   onExecuteTransaction,
   onSendKitToCME,
+  onUpdateKitStatus,
   activeProfile,
   almoxarifadoReports = [],
   onSaveAlmoxarifadoReport
@@ -37,6 +45,31 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
     type: 'success' | 'info';
     message: string;
   } | null>(null);
+
+  // Estados para Retirada Parcial ou Total no Balcão
+  const [counterWithdrawingKit, setCounterWithdrawingKit] = useState<Kit | null>(null);
+  const [withdrawMarmitasQty, setWithdrawMarmitasQty] = useState<number>(1);
+  const [withdrawPacotesQty, setWithdrawPacotesQty] = useState<number>(0);
+
+  // Estados para Devolução Parcial ou Total no Balcão
+  const [counterReturningKit, setCounterReturningKit] = useState<Kit | null>(null);
+  const [returnMarmitasQty, setReturnMarmitasQty] = useState<number>(1);
+  const [returnPacotesQty, setReturnPacotesQty] = useState<number>(0);
+
+  // Estados para Leitor de QR Code pelo Celular
+  const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
+  const [qrScanInput, setQrScanInput] = useState('');
+  const [isSimulatingCamera, setIsSimulatingCamera] = useState(true);
+
+  // Estados para Confirmação de Retirada de Volumes por QR Code
+  const [isQrWithdrawModalOpen, setIsQrWithdrawModalOpen] = useState(false);
+  const [qrWithdrawMarmitas, setQrWithdrawMarmitas] = useState(1);
+  const [qrWithdrawPacotes, setQrWithdrawPacotes] = useState(0);
+
+  // Estados para Reprovação de Solicitação no Balcão
+  const [kitToReprove, setKitToReprove] = useState<Kit | null>(null);
+  const [rejectionReasonInput, setRejectionReasonInput] = useState('');
+  const [predefinedRejectionReason, setPredefinedRejectionReason] = useState('Embalagem danificada ou perfurada');
 
   // Estados para o Formulário de Levantamento do Turno (Fornecer dados ao Administrador)
   const [selectedShift, setSelectedShift] = useState<'Manhã (07:30 - 12:00)' | 'Tarde (13:30 - 18:00)' | 'Noite (18:30 - 22:00)'>('Manhã (07:30 - 12:00)');
@@ -82,10 +115,10 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
     {
       id: 'dmg-2',
       kitCode: 'K-E101',
-      type: 'Etiqueta Ilegível / Descolada',
+      type: 'Lacre Danificado / Desgastado',
       studentGrr: '20224810',
       studentName: 'Lucas Ferreira Lima',
-      description: 'Etiqueta térmica descolou parcialmente após lavagem no expurgo; necessita reimpressão.',
+      description: 'Lacre de segurança rompido durante movimentação; necessita novo lacre de esterilização.',
       severity: 'Baixa'
     }
   ]);
@@ -200,58 +233,155 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
       (currentStudent && k.name.toLowerCase().includes(currentStudent.name.toLowerCase().split(' ')[0]))
   );
 
-  // Separar as marmitas por situação de atendimento
-  // 1. Marmitas prontas para serem retiradas pelo aluno (Estéreis)
-  const readyToWithdrawKits = studentKits.filter((k) => k.status === 'Ready');
+  // Separar os kits e marmitas por situação de atendimento
+  // 1. Marmitas/Kits prontos para serem retirados pelo aluno (Estéreis) com volumes em aberto
+  const readyToWithdrawKits = studentKits.filter(
+    (k) =>
+      (k.status === 'Ready' || k.status === 'Pronta') &&
+      (Math.max(0, (k.marmitasCount ?? 1) - (k.marmitasWithdrawn ?? 0)) > 0 ||
+        Math.max(0, (k.pacotesCount ?? 0) - (k.pacotesWithdrawn ?? 0)) > 0)
+  );
 
-  // 2. Marmitas atualmente em uso com o aluno (a serem devolvidas)
+  // 2. Marmitas/Kits atualmente em uso com o aluno (a serem devolvidos)
   const currentlyInUseKits = studentKits.filter((k) => k.status === 'In Use');
 
-  // 3. Novas marmitas entregues pelo aluno para esterilização na CME
-  const pendingCMEKits = studentKits.filter((k) => k.status === 'Decontaminated');
+  // 3. Novos kits/marmitas entregues pelo aluno aguardando esterilização / liberação no balcão
+  const pendingCMEKits = studentKits.filter(
+    (k) =>
+      k.status === 'Decontaminated' ||
+      k.status === 'Aguardando Liberação' ||
+      (k.status as string) === 'Pending Release'
+  );
 
-  // Ação 1: Conferir e Liberar Retirada de Marmita Estéril
-  const handleConfirmWithdrawal = (kit: Kit) => {
+  // 4. Kits reprovados pelo balcão
+  const reprovedKits = studentKits.filter((k) => k.status === 'Reprovado');
+
+  // Totais de volumes disponíveis para retirada do aluno
+  const totalAvailableMarmitas = readyToWithdrawKits.reduce(
+    (acc, k) => acc + Math.max(0, (k.marmitasCount ?? 1) - (k.marmitasWithdrawn ?? 0)),
+    0
+  );
+  const totalAvailablePacotes = readyToWithdrawKits.reduce(
+    (acc, k) => acc + Math.max(0, (k.pacotesCount ?? 0) - (k.pacotesWithdrawn ?? 0)),
+    0
+  );
+
+  // Ação 1: Abrir Modal de Retirada Parcial/Total
+  const handleOpenWithdrawModal = (kit: Kit) => {
+    const mRemaining = Math.max(0, (kit.marmitasCount ?? 1) - (kit.marmitasWithdrawn ?? 0));
+    const pRemaining = Math.max(0, (kit.pacotesCount ?? 0) - (kit.pacotesWithdrawn ?? 0));
+    setCounterWithdrawingKit(kit);
+    setWithdrawMarmitasQty(mRemaining > 0 ? mRemaining : 0);
+    setWithdrawPacotesQty(pRemaining > 0 ? pRemaining : 0);
+  };
+
+  // Confirmar Retirada (Parcial ou Total)
+  const handleConfirmCounterWithdrawal = () => {
+    if (!currentStudent || !counterWithdrawingKit) return;
+    onExecuteTransaction({
+      studentGrr: currentStudent.grr,
+      kitId: counterWithdrawingKit.code,
+      type: 'Withdrawal',
+      withdrawnMarmitas: withdrawMarmitasQty,
+      withdrawnPacotes: withdrawPacotesQty
+    });
+
+    const itemsDesc = [];
+    if (withdrawMarmitasQty > 0) itemsDesc.push(`${withdrawMarmitasQty} marmita(s)`);
+    if (withdrawPacotesQty > 0) itemsDesc.push(`${withdrawPacotesQty} pacote(s)`);
+
+    setVerificationFeedback({
+      type: 'success',
+      message: `Retirada de ${itemsDesc.join(' e ') || 'itens'} do kit ${counterWithdrawingKit.code} liberada para o acadêmico ${currentStudent.name} (${currentStudent.grr}).`
+    });
+    setCounterWithdrawingKit(null);
+    setDirectKitSearch('');
+    setTimeout(() => setVerificationFeedback(null), 5000);
+  };
+
+  // Ação 2: Abrir Modal de Devolução Parcial/Total
+  const handleOpenReturnModal = (kit: Kit) => {
+    const mInUse = kit.marmitasWithdrawn ?? 1;
+    const pInUse = kit.pacotesWithdrawn ?? 0;
+    setCounterReturningKit(kit);
+    setReturnMarmitasQty(mInUse > 0 ? mInUse : 0);
+    setReturnPacotesQty(pInUse > 0 ? pInUse : 0);
+  };
+
+  // Confirmar Devolução (Parcial ou Total)
+  const handleConfirmCounterReturn = () => {
+    if (!currentStudent || !counterReturningKit) return;
+    onExecuteTransaction({
+      studentGrr: currentStudent.grr,
+      kitId: counterReturningKit.code,
+      type: 'Return',
+      withdrawnMarmitas: returnMarmitasQty,
+      withdrawnPacotes: returnPacotesQty
+    });
+
+    const itemsDesc = [];
+    if (returnMarmitasQty > 0) itemsDesc.push(`${returnMarmitasQty} marmita(s)`);
+    if (returnPacotesQty > 0) itemsDesc.push(`${returnPacotesQty} pacote(s)`);
+
+    setVerificationFeedback({
+      type: 'success',
+      message: `Devolução de ${itemsDesc.join(' e ') || 'itens'} do kit ${counterReturningKit.code} conferida e registrada. Encaminhada ao setor de limpeza e esterilização.`
+    });
+    setCounterReturningKit(null);
+    setDirectKitSearch('');
+    setTimeout(() => setVerificationFeedback(null), 5000);
+  };
+
+  // Ação 3: Liberar Retirada Total Rápida
+  const handleQuickWithdrawAll = (kit: Kit) => {
     if (!currentStudent) return;
+    const mRemaining = Math.max(0, (kit.marmitasCount ?? 1) - (kit.marmitasWithdrawn ?? 0));
+    const pRemaining = Math.max(0, (kit.pacotesCount ?? 0) - (kit.pacotesWithdrawn ?? 0));
     onExecuteTransaction({
       studentGrr: currentStudent.grr,
       kitId: kit.code,
-      type: 'Withdrawal'
+      type: 'Withdrawal',
+      withdrawnMarmitas: mRemaining,
+      withdrawnPacotes: pRemaining
     });
 
     setVerificationFeedback({
       type: 'success',
-      message: `Marmita ${kit.code} conferida com sucesso e liberada para o acadêmico ${currentStudent.name} (${currentStudent.grr}).`
+      message: `Kit / Marmita ${kit.code} conferido e liberado com sucesso para o acadêmico ${currentStudent.name} (${currentStudent.grr}).`
     });
     setDirectKitSearch('');
     setTimeout(() => setVerificationFeedback(null), 5000);
   };
 
-  // Ação 2: Conferir e Receber Devolução de Marmita Usada
-  const handleConfirmReturn = (kit: Kit) => {
+  // Ação 4: Receber Devolução Total Rápida
+  const handleQuickReturnAll = (kit: Kit) => {
     if (!currentStudent) return;
+    const mInUse = kit.marmitasWithdrawn ?? 1;
+    const pInUse = kit.pacotesWithdrawn ?? 0;
     onExecuteTransaction({
       studentGrr: currentStudent.grr,
       kitId: kit.code,
-      type: 'Return'
+      type: 'Return',
+      withdrawnMarmitas: mInUse,
+      withdrawnPacotes: pInUse
     });
 
     setVerificationFeedback({
       type: 'success',
-      message: `Devolução da marmita ${kit.code} conferida e registrada. Encaminhada ao expurgo da CME.`
+      message: `Devolução do kit / marmita ${kit.code} conferida e registrada. Encaminhado ao setor de limpeza e esterilização.`
     });
     setDirectKitSearch('');
     setTimeout(() => setVerificationFeedback(null), 5000);
   };
 
-  // Ação 3: Conferir Nova Marmita Entregue pelo Aluno para Autoclave
+  // Ação 5: Conferir Novo Kit Entregue pelo Aluno para Esterilização
   const handleConfirmNewKitForCME = (kit: Kit) => {
     if (onSendKitToCME) {
       onSendKitToCME(kit.id);
     }
     setVerificationFeedback({
       type: 'success',
-      message: `Marmita ${kit.code} conferida e recebida no balcão. Encaminhada para ciclo de autoclave na CME.`
+      message: `Kit / Marmita ${kit.code} conferido e recebido no balcão. Encaminhado para ciclo de esterilização.`
     });
     setDirectKitSearch('');
     setTimeout(() => setVerificationFeedback(null), 5000);
@@ -265,6 +395,137 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
       const foundStudent = students.find((s) => s.code === kit.assignedTo || s.name === kit.assignedStudentName);
       if (foundStudent) setSelectedStudentGrr(foundStudent.grr);
     }
+  };
+
+  // Processar Leitura do QR Code apresentado pelo Aluno
+  const handleProcessQrScan = (rawPayload: string) => {
+    let targetGrr = rawPayload.trim();
+    let targetPin = '';
+    if (rawPayload.includes(':')) {
+      const parts = rawPayload.split(':');
+      if (parts.length >= 3) {
+        targetGrr = parts[1];
+        targetPin = parts[2];
+      } else if (parts.length === 2) {
+        targetGrr = parts[0];
+        targetPin = parts[1];
+      }
+    }
+
+    // Localizar aluno pelo GRR ou código ou pelo PIN (0-400)
+    const foundStudent = students.find(
+      (s) =>
+        s.grr.toLowerCase() === targetGrr.toLowerCase() ||
+        s.code.toLowerCase() === targetGrr.toLowerCase() ||
+        (targetPin && (s.numericPassword?.toString().padStart(3, '0') === targetPin || s.numericPassword?.toString() === targetPin))
+    );
+
+    if (foundStudent) {
+      setSelectedStudentGrr(foundStudent.grr);
+      setSearchStudentInput('');
+      setIsQrScannerOpen(false);
+
+      // Calcular kits prontos em aberto para retirada deste aluno
+      const studentReadyKits = kits.filter(
+        (k) =>
+          (k.ownerStudentGrr === foundStudent.grr ||
+            k.assignedTo === foundStudent.grr ||
+            (k.name.toLowerCase().includes(foundStudent.name.toLowerCase().split(' ')[0]))) &&
+          (k.status === 'Ready' || k.status === 'Pronta') &&
+          (Math.max(0, (k.marmitasCount ?? 1) - (k.marmitasWithdrawn ?? 0)) > 0 ||
+            Math.max(0, (k.pacotesCount ?? 0) - (k.pacotesWithdrawn ?? 0)) > 0)
+      );
+
+      const totalM = studentReadyKits.reduce(
+        (acc, k) => acc + Math.max(0, (k.marmitasCount ?? 1) - (k.marmitasWithdrawn ?? 0)),
+        0
+      );
+      const totalP = studentReadyKits.reduce(
+        (acc, k) => acc + Math.max(0, (k.pacotesCount ?? 0) - (k.pacotesWithdrawn ?? 0)),
+        0
+      );
+
+      setQrWithdrawMarmitas(totalM > 0 ? totalM : 0);
+      setQrWithdrawPacotes(totalP > 0 ? totalP : 0);
+      setIsQrWithdrawModalOpen(true);
+
+      const pinFmt = (foundStudent.numericPassword ?? 0).toString().padStart(3, '0');
+      setVerificationFeedback({
+        type: 'success',
+        message: `QR Code lido com sucesso! Acadêmico(a): ${foundStudent.name} (GRR: ${foundStudent.grr} • Senha Numérica: ${pinFmt}). ${studentReadyKits.length} kit(s) prontos em aberto.`
+      });
+      setTimeout(() => setVerificationFeedback(null), 6000);
+    } else {
+      setVerificationFeedback({
+        type: 'info',
+        message: `Código QR '${rawPayload}' não reconhecido. Certifique-se de escanear o QR Code de um acadêmico cadastrado.`
+      });
+      setTimeout(() => setVerificationFeedback(null), 4000);
+    }
+  };
+
+  // Confirmar Retirada de Volumes por QR Code
+  const handleConfirmQrWithdrawal = () => {
+    if (!currentStudent) return;
+
+    let marmitasRemainingToWithdraw = qrWithdrawMarmitas;
+    let pacotesRemainingToWithdraw = qrWithdrawPacotes;
+
+    readyToWithdrawKits.forEach((kit) => {
+      if (marmitasRemainingToWithdraw <= 0 && pacotesRemainingToWithdraw <= 0) return;
+
+      const availM = Math.max(0, (kit.marmitasCount ?? 1) - (kit.marmitasWithdrawn ?? 0));
+      const availP = Math.max(0, (kit.pacotesCount ?? 0) - (kit.pacotesWithdrawn ?? 0));
+
+      const takeM = Math.min(availM, marmitasRemainingToWithdraw);
+      const takeP = Math.min(availP, pacotesRemainingToWithdraw);
+
+      if (takeM > 0 || takeP > 0) {
+        onExecuteTransaction({
+          studentGrr: currentStudent.grr,
+          kitId: kit.code,
+          type: 'Withdrawal',
+          withdrawnMarmitas: takeM,
+          withdrawnPacotes: takeP
+        });
+        marmitasRemainingToWithdraw -= takeM;
+        pacotesRemainingToWithdraw -= takeP;
+      }
+    });
+
+    const pinFmt = (currentStudent.numericPassword ?? 0).toString().padStart(3, '0');
+    setVerificationFeedback({
+      type: 'success',
+      message: `Retirada de ${qrWithdrawMarmitas} marmita(s) e ${qrWithdrawPacotes} pacote(s) confirmada com sucesso via QR Code para ${currentStudent.name} (GRR: ${currentStudent.grr} • Senha: ${pinFmt})!`
+    });
+    setIsQrWithdrawModalOpen(false);
+    setTimeout(() => setVerificationFeedback(null), 6000);
+  };
+
+  // Ação: Abrir Modal de Reprovação de Solicitação
+  const handleOpenReproveModal = (kit: Kit) => {
+    setKitToReprove(kit);
+    setPredefinedRejectionReason('Embalagem danificada ou perfurada');
+    setRejectionReasonInput('');
+  };
+
+  // Confirmar Reprovação do Kit
+  const handleConfirmReproveKit = () => {
+    if (!kitToReprove) return;
+    const finalReason = rejectionReasonInput.trim()
+      ? `${predefinedRejectionReason}: ${rejectionReasonInput.trim()}`
+      : predefinedRejectionReason;
+
+    if (onUpdateKitStatus) {
+      onUpdateKitStatus(kitToReprove.id, 'Reprovado', finalReason);
+    }
+
+    setVerificationFeedback({
+      type: 'info',
+      message: `Solicitação do kit ${kitToReprove.code} reprovada no balcão. Motivo anexado: ${finalReason}. O aluno foi notificado no portal.`
+    });
+    setKitToReprove(null);
+    setTimeout(() => setVerificationFeedback(null), 6000);
   };
 
   // Últimas conferências registradas
@@ -417,7 +678,7 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
                 {matchedDirectKit.name}
               </h4>
               <span className="text-[11.5px] text-amber-800">
-                ({matchedDirectKit.status === 'Ready' ? 'Estéril / Pronta' : matchedDirectKit.status === 'In Use' ? 'Em Uso' : 'Na CME'})
+                ({matchedDirectKit.status === 'Ready' ? 'Estéril / Pronta' : matchedDirectKit.status === 'In Use' ? 'Em Uso' : 'Na Esterilização'})
               </span>
             </div>
             <p className="text-[12px] text-amber-800 mt-1">
@@ -458,13 +719,13 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
             </div>
           </div>
 
-          {/* 1. SEÇÃO: Marmitas Prontas para Retirada (Estéreis) */}
+          {/* 1. SEÇÃO: Kits e Marmitas Prontas para Retirada (Estéreis) */}
           <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
                 <h3 className="text-[16px] font-bold text-slate-900">
-                  Marmitas Solicitadas / Prontas para Retirada ({readyToWithdrawKits.length})
+                  Kits Solicitados / Prontos para Retirada ({readyToWithdrawKits.length})
                 </h3>
               </div>
               <span className="text-[11.5px] text-slate-500">
@@ -474,52 +735,85 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
 
             {readyToWithdrawKits.length > 0 ? (
               <div className="space-y-3">
-                {readyToWithdrawKits.map((kit) => (
-                  <div
-                    key={kit.id}
-                    className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-[13px] bg-slate-900 text-white px-2.5 py-0.5 rounded">
-                          {kit.code}
-                        </span>
-                        <h4 className="text-[15px] font-bold text-slate-900">{kit.name}</h4>
-                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-full">
-                          Estéril ({kit.validityDays} dias)
-                        </span>
-                      </div>
-                      <p className="text-[12px] text-slate-600">
-                        {kit.boxMaterial || 'Caixa Inox'} • Categoria: <strong>{kit.category || 'Geral'}</strong> • {kit.notes || 'Identificação por código e lacre'}
-                      </p>
-                    </div>
+                {readyToWithdrawKits.map((kit) => {
+                  const mTotal = kit.marmitasCount ?? 1;
+                  const pTotal = kit.pacotesCount ?? 0;
+                  const mWithdrawn = kit.marmitasWithdrawn ?? 0;
+                  const pWithdrawn = kit.pacotesWithdrawn ?? 0;
+                  const mAvail = Math.max(0, mTotal - mWithdrawn);
+                  const pAvail = Math.max(0, pTotal - pWithdrawn);
+                  const hasMultiple = mTotal + pTotal > 1;
 
-                    <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
-                      <button
-                        onClick={() => handleConfirmWithdrawal(kit)}
-                        className="w-full md:w-auto px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[13px] font-bold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">check</span>
-                        <span>Conferir e Liberar Retirada</span>
-                      </button>
+                  return (
+                    <div
+                      key={kit.id}
+                      className="p-4 rounded-xl border border-emerald-200 bg-emerald-50/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono font-bold text-[13px] bg-slate-900 text-white px-2.5 py-0.5 rounded">
+                            {kit.code}
+                          </span>
+                          <h4 className="text-[15px] font-bold text-slate-900">{kit.name}</h4>
+                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[11px] font-bold rounded-full">
+                            Pronto / Estéril ({kit.validityDays} dias)
+                          </span>
+                        </div>
+
+                        {/* Detalhamento dos Volumes do Kit */}
+                        <div className="flex items-center gap-2 flex-wrap text-[12px]">
+                          <span className="inline-flex items-center gap-1 font-semibold text-emerald-950 bg-emerald-100/70 border border-emerald-200 px-2 py-0.5 rounded-md">
+                            <span className="material-symbols-outlined text-[15px]">inventory_2</span>
+                            {mAvail} marmita(s) rígida(s)
+                          </span>
+                          {pTotal > 0 && (
+                            <span className="inline-flex items-center gap-1 font-semibold text-emerald-950 bg-emerald-100/70 border border-emerald-200 px-2 py-0.5 rounded-md">
+                              <span className="material-symbols-outlined text-[15px]">medical_services</span>
+                              {pAvail} pacote(s) macio(s)
+                            </span>
+                          )}
+                          <span className="text-slate-500">
+                            • Categoria: <strong>{kit.category || 'Geral'}</strong>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 w-full md:w-auto flex-wrap">
+                        {hasMultiple && (
+                          <button
+                            onClick={() => handleOpenWithdrawModal(kit)}
+                            className="w-full md:w-auto px-3.5 py-2 border border-emerald-600 bg-white hover:bg-emerald-50 text-emerald-800 rounded-xl text-[12.5px] font-bold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[17px]">checklist</span>
+                            <span>Retirar Parcial</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleQuickWithdrawAll(kit)}
+                          className="w-full md:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[13px] font-bold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">check</span>
+                          <span>{hasMultiple ? 'Liberar Tudo' : 'Liberar Retirada'}</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-[12.5px] text-slate-500 py-2 italic">
-                Nenhuma marmita estéril aguardando retirada para este aluno no momento.
+                Nenhum kit estéril aguardando retirada para este aluno no momento.
               </p>
             )}
           </div>
 
-          {/* 2. SEÇÃO: Marmitas em Uso pelo Aluno (Devolução) */}
+          {/* 2. SEÇÃO: Kits / Marmitas em Uso pelo Aluno (Devolução) */}
           <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
                 <h3 className="text-[16px] font-bold text-slate-900">
-                  Marmitas em Posse / A Devolver ({currentlyInUseKits.length})
+                  Kits em Posse / A Devolver ({currentlyInUseKits.length})
                 </h3>
               </div>
               <span className="text-[11.5px] text-slate-500">
@@ -529,57 +823,86 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
 
             {currentlyInUseKits.length > 0 ? (
               <div className="space-y-3">
-                {currentlyInUseKits.map((kit) => (
-                  <div
-                    key={kit.id}
-                    className="p-4 rounded-xl border border-blue-200 bg-blue-50/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-[13px] bg-slate-900 text-white px-2.5 py-0.5 rounded">
-                          {kit.code}
-                        </span>
-                        <h4 className="text-[15px] font-bold text-slate-900">{kit.name}</h4>
-                        <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[11px] font-bold rounded-full">
-                          Em Uso Clínico
-                        </span>
-                      </div>
-                      <p className="text-[12px] text-slate-600">
-                        {kit.boxMaterial || 'Caixa Inox'} • Retirada: {kit.checkoutTime || 'Hoje'}
-                      </p>
-                    </div>
+                {currentlyInUseKits.map((kit) => {
+                  const mWithdrawn = kit.marmitasWithdrawn ?? 1;
+                  const pWithdrawn = kit.pacotesWithdrawn ?? 0;
+                  const hasMultiple = mWithdrawn + pWithdrawn > 1;
 
-                    <div className="flex items-center gap-2 shrink-0 w-full md:w-auto">
-                      <button
-                        onClick={() => handleConfirmReturn(kit)}
-                        className="w-full md:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[13px] font-bold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
-                      >
-                        <span className="material-symbols-outlined text-[18px]">input</span>
-                        <span>Conferir e Receber Devolução</span>
-                      </button>
+                  return (
+                    <div
+                      key={kit.id}
+                      className="p-4 rounded-xl border border-blue-200 bg-blue-50/40 flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono font-bold text-[13px] bg-slate-900 text-white px-2.5 py-0.5 rounded">
+                            {kit.code}
+                          </span>
+                          <h4 className="text-[15px] font-bold text-slate-900">{kit.name}</h4>
+                          <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-[11px] font-bold rounded-full">
+                            Em Uso Clínico
+                          </span>
+                        </div>
+
+                        {/* Volumes em Posse */}
+                        <div className="flex items-center gap-2 flex-wrap text-[12px]">
+                          <span className="inline-flex items-center gap-1 font-semibold text-blue-950 bg-blue-100/70 border border-blue-200 px-2 py-0.5 rounded-md">
+                            <span className="material-symbols-outlined text-[15px]">inventory_2</span>
+                            {mWithdrawn} marmita(s) em posse
+                          </span>
+                          {pWithdrawn > 0 && (
+                            <span className="inline-flex items-center gap-1 font-semibold text-blue-950 bg-blue-100/70 border border-blue-200 px-2 py-0.5 rounded-md">
+                              <span className="material-symbols-outlined text-[15px]">medical_services</span>
+                              {pWithdrawn} pacote(s) em posse
+                            </span>
+                          )}
+                          <span className="text-slate-500">
+                            • Retirada: {kit.checkoutTime || 'Hoje'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2 shrink-0 w-full md:w-auto flex-wrap">
+                        {hasMultiple && (
+                          <button
+                            onClick={() => handleOpenReturnModal(kit)}
+                            className="w-full md:w-auto px-3.5 py-2 border border-blue-600 bg-white hover:bg-blue-50 text-blue-800 rounded-xl text-[12.5px] font-bold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                          >
+                            <span className="material-symbols-outlined text-[17px]">checklist</span>
+                            <span>Devolver Parcial</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleQuickReturnAll(kit)}
+                          className="w-full md:w-auto px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[13px] font-bold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">input</span>
+                          <span>{hasMultiple ? 'Devolver Tudo' : 'Receber Devolução'}</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <p className="text-[12.5px] text-slate-500 py-2 italic">
-                O acadêmico não possui nenhuma marmita em aberto para devolução.
+                O acadêmico não possui nenhum kit ou marmita em aberto para devolução.
               </p>
             )}
           </div>
 
-          {/* 3. SEÇÃO: Novas Marmitas Entregues para Esterilização (CME) */}
+          {/* 3. SEÇÃO: Novos Kits Entregues para Esterilização */}
           {pendingCMEKits.length > 0 && (
             <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
                   <h3 className="text-[16px] font-bold text-slate-900">
-                    Novas Marmitas Entregues para a CME ({pendingCMEKits.length})
+                    Novos Kits / Marmitas Entregues para Esterilização ({pendingCMEKits.length})
                   </h3>
                 </div>
                 <span className="text-[11.5px] text-slate-500">
-                  Cadastradas pelo aluno aguardando autoclave
+                  Cadastrados pelo aluno aguardando início de ciclo
                 </span>
               </div>
 
@@ -596,11 +919,11 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
                         </span>
                         <h4 className="text-[15px] font-bold text-slate-900">{kit.name}</h4>
                         <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[11px] font-bold rounded-full">
-                          Na Fila da CME
+                          Aguardando Esterilização
                         </span>
                       </div>
                       <p className="text-[12px] text-slate-600">
-                        {kit.boxMaterial || 'Caixa Inox'} • Categoria: <strong>{kit.category || 'Geral'}</strong> • {kit.notes || 'Identificação por código e lacre'}
+                        {kit.marmitasCount ?? 1} marmita(s) • {kit.pacotesCount ?? 0} pacote(s) • Categoria: <strong>{kit.category || 'Geral'}</strong>
                       </p>
                     </div>
 
@@ -610,7 +933,7 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
                         className="w-full md:w-auto px-4 py-2.5 bg-amber-700 hover:bg-amber-800 text-white rounded-xl text-[13px] font-bold shadow-xs flex items-center justify-center gap-1.5 cursor-pointer transition-colors"
                       >
                         <span className="material-symbols-outlined text-[18px]">verified</span>
-                        <span>Confirmar Recebimento p/ CME</span>
+                        <span>Confirmar Recebimento p/ Esterilização</span>
                       </button>
                     </div>
                   </div>
@@ -695,7 +1018,7 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
               <p className="text-[13px] text-amber-900 mt-1 max-w-3xl">
                 Aqui o atendente do almoxarifado consolida e submete ao Administrador os dados operacionais do turno:
                 <strong> avarias físicas detectadas em marmitas/caixas</strong>, <strong>marmitas em atraso de devolução</strong>,
-                <strong> consumo de insumos de esterilização da CME</strong> e <strong>balanço de giros do balcão</strong>.
+                <strong> consumo de insumos de esterilização</strong> e <strong>balanço de giros do balcão</strong>.
               </p>
             </div>
 
@@ -892,7 +1215,7 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
                     </label>
                     <input
                       type="text"
-                      placeholder="Ex: Presilha lateral soltou; marmita precisa de ajuste antes da autoclave."
+                      placeholder="Ex: Presilha lateral soltou; marmita precisa de ajuste antes da esterilização."
                       value={damageForm.description}
                       onChange={(e) => setDamageForm({ ...damageForm, description: e.target.value })}
                       className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[12.5px] text-slate-800 focus:outline-hidden focus:border-rose-500"
@@ -996,13 +1319,13 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
             </div>
           </div>
 
-          {/* DADO ESSENCIAL 3: Controle de Consumo de Insumos da CME e Balcão */}
+          {/* DADO ESSENCIAL 3: Controle de Consumo de Insumos da Esterilização e Balcão */}
           <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-xs space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <span className="material-symbols-outlined text-purple-600 text-[20px]">science</span>
                 <h3 className="text-[16px] font-bold text-slate-900">
-                  3. Consumo de Insumos Críticos no Turno (CME &amp; Esterilização)
+                  3. Consumo de Insumos Críticos no Turno (Setor de Esterilização)
                 </h3>
               </div>
               <span className="text-[11.5px] text-slate-500">
@@ -1043,7 +1366,7 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
 
               <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
                 <label className="text-[11.5px] font-bold text-slate-600 uppercase block mb-1">
-                  Fita Zebrada Autoclave
+                  Fita Zebrada Termossensível
                 </label>
                 <div className="flex items-center gap-2">
                   <input
@@ -1125,6 +1448,286 @@ export const ReceptionCounterView: React.FC<ReceptionCounterViewProps> = ({
               </div>
             </div>
           )}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: RETIRADA PARCIAL / TOTAL NO BALCÃO                                 */}
+      {/* ========================================================================= */}
+      {counterWithdrawingKit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-150">
+            <div className="p-4.5 bg-emerald-800 text-white flex justify-between items-center">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-emerald-700 flex items-center justify-center text-white">
+                  <span className="material-symbols-outlined text-[20px]">output</span>
+                </div>
+                <div>
+                  <h3 className="text-[16px] font-bold">Liberar Retirada de Volumes</h3>
+                  <p className="text-[11px] text-emerald-200">
+                    Defina quantos itens do kit o acadêmico está retirando
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCounterWithdrawingKit(null)}
+                className="text-emerald-200 hover:text-white cursor-pointer p-1"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
+                <div className="flex justify-between items-center text-[12.5px]">
+                  <span className="font-mono font-bold text-emerald-900">{counterWithdrawingKit.code}</span>
+                  <span className="text-slate-600 font-medium">{counterWithdrawingKit.name}</span>
+                </div>
+                <p className="text-[11.5px] text-emerald-800 mt-1">
+                  Acadêmico: <strong>{currentStudent?.name}</strong> ({currentStudent?.grr})
+                </p>
+              </div>
+
+              {/* Seletor de Marmitas (Rígidos) */}
+              {((counterWithdrawingKit.marmitasCount ?? 1) > 0) && (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="text-[13px] font-bold text-slate-800">
+                        Marmitas Rígidas (Bisturis, caixas, etc.)
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        Disponíveis no kit:{' '}
+                        <strong>
+                          {Math.max(0, (counterWithdrawingKit.marmitasCount ?? 1) - (counterWithdrawingKit.marmitasWithdrawn ?? 0))}
+                        </strong>{' '}
+                        de {counterWithdrawingKit.marmitasCount ?? 1}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setWithdrawMarmitasQty((prev) => Math.max(0, prev - 1))}
+                        className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 font-bold hover:bg-slate-100 cursor-pointer"
+                      >
+                        -
+                      </button>
+                      <span className="w-8 text-center font-bold text-[15px] text-slate-900">
+                        {withdrawMarmitasQty}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const max = Math.max(0, (counterWithdrawingKit.marmitasCount ?? 1) - (counterWithdrawingKit.marmitasWithdrawn ?? 0));
+                          setWithdrawMarmitasQty((prev) => Math.min(max, prev + 1));
+                        }}
+                        className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 font-bold hover:bg-slate-100 cursor-pointer"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Seletor de Pacotes (Macios) */}
+              {((counterWithdrawingKit.pacotesCount ?? 0) > 0) && (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="text-[13px] font-bold text-slate-800">
+                        Pacotes Macios (Capas cirúrgicas, campos, etc.)
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        Disponíveis no kit:{' '}
+                        <strong>
+                          {Math.max(0, (counterWithdrawingKit.pacotesCount ?? 0) - (counterWithdrawingKit.pacotesWithdrawn ?? 0))}
+                        </strong>{' '}
+                        de {counterWithdrawingKit.pacotesCount ?? 0}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setWithdrawPacotesQty((prev) => Math.max(0, prev - 1))}
+                        className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 font-bold hover:bg-slate-100 cursor-pointer"
+                      >
+                        -
+                      </button>
+                      <span className="w-8 text-center font-bold text-[15px] text-slate-900">
+                        {withdrawPacotesQty}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const max = Math.max(0, (counterWithdrawingKit.pacotesCount ?? 0) - (counterWithdrawingKit.pacotesWithdrawn ?? 0));
+                          setWithdrawPacotesQty((prev) => Math.min(max, prev + 1));
+                        }}
+                        className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 font-bold hover:bg-slate-100 cursor-pointer"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Botões de Ação */}
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCounterWithdrawingKit(null)}
+                  className="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[12.5px] font-semibold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={withdrawMarmitasQty <= 0 && withdrawPacotesQty <= 0}
+                  onClick={handleConfirmCounterWithdrawal}
+                  className="w-1/2 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white rounded-xl text-[12.5px] font-bold shadow-xs cursor-pointer disabled:cursor-not-allowed transition-colors"
+                >
+                  Confirmar Retirada
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: DEVOLUÇÃO PARCIAL / TOTAL NO BALCÃO                                 */}
+      {/* ========================================================================= */}
+      {counterReturningKit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden border border-slate-200 animate-in zoom-in-95 duration-150">
+            <div className="p-4.5 bg-blue-800 text-white flex justify-between items-center">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-700 flex items-center justify-center text-white">
+                  <span className="material-symbols-outlined text-[20px]">input</span>
+                </div>
+                <div>
+                  <h3 className="text-[16px] font-bold">Receber Devolução de Volumes</h3>
+                  <p className="text-[11px] text-blue-200">
+                    Defina quantos itens o acadêmico está devolvendo para limpeza
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setCounterReturningKit(null)}
+                className="text-blue-200 hover:text-white cursor-pointer p-1"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl">
+                <div className="flex justify-between items-center text-[12.5px]">
+                  <span className="font-mono font-bold text-blue-900">{counterReturningKit.code}</span>
+                  <span className="text-slate-600 font-medium">{counterReturningKit.name}</span>
+                </div>
+                <p className="text-[11.5px] text-blue-800 mt-1">
+                  Acadêmico: <strong>{currentStudent?.name}</strong> ({currentStudent?.grr})
+                </p>
+              </div>
+
+              {/* Seletor de Marmitas a Devolver */}
+              {(counterReturningKit.marmitasWithdrawn ?? 1) > 0 && (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="text-[13px] font-bold text-slate-800">
+                        Marmitas Rígidas a Devolver
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        Atualmente em posse: <strong>{counterReturningKit.marmitasWithdrawn ?? 1}</strong>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setReturnMarmitasQty((prev) => Math.max(0, prev - 1))}
+                        className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 font-bold hover:bg-slate-100 cursor-pointer"
+                      >
+                        -
+                      </button>
+                      <span className="w-8 text-center font-bold text-[15px] text-slate-900">
+                        {returnMarmitasQty}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const max = counterReturningKit.marmitasWithdrawn ?? 1;
+                          setReturnMarmitasQty((prev) => Math.min(max, prev + 1));
+                        }}
+                        className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 font-bold hover:bg-slate-100 cursor-pointer"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Seletor de Pacotes a Devolver */}
+              {(counterReturningKit.pacotesWithdrawn ?? 0) > 0 && (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="text-[13px] font-bold text-slate-800">
+                        Pacotes Macios a Devolver
+                      </h4>
+                      <p className="text-[11px] text-slate-500">
+                        Atualmente em posse: <strong>{counterReturningKit.pacotesWithdrawn ?? 0}</strong>
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setReturnPacotesQty((prev) => Math.max(0, prev - 1))}
+                        className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 font-bold hover:bg-slate-100 cursor-pointer"
+                      >
+                        -
+                      </button>
+                      <span className="w-8 text-center font-bold text-[15px] text-slate-900">
+                        {returnPacotesQty}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const max = counterReturningKit.pacotesWithdrawn ?? 0;
+                          setReturnPacotesQty((prev) => Math.min(max, prev + 1));
+                        }}
+                        className="w-8 h-8 rounded-lg bg-white border border-slate-300 flex items-center justify-center text-slate-700 font-bold hover:bg-slate-100 cursor-pointer"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Botões de Ação */}
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setCounterReturningKit(null)}
+                  className="w-1/2 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-[12.5px] font-semibold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  disabled={returnMarmitasQty <= 0 && returnPacotesQty <= 0}
+                  onClick={handleConfirmCounterReturn}
+                  className="w-1/2 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white rounded-xl text-[12.5px] font-bold shadow-xs cursor-pointer disabled:cursor-not-allowed transition-colors"
+                >
+                  Confirmar Devolução
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>

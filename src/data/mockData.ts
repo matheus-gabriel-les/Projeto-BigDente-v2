@@ -56,7 +56,7 @@ export const userProfiles: UserProfile[] = [
     studentGrr: '20230192',
     studentId: 'stu-6',
     avatarUrl: APP_IMAGES.drVance,
-    description: 'Visão do aluno: cadastro e gestão das suas próprias marmitas de instrumental, acompanhamento de ciclos de esterilização na CME, emissão de etiquetas com QR Code e cartão digital.',
+    description: 'Visão do aluno: cadastro e gestão dos seus kits com marmitas e pacotes cirúrgicos, acompanhamento de ciclos no setor de esterilização e apresentação no balcão.',
     allowedTabs: ['student_space', 'student_available', 'help'],
     badgeColor: 'bg-blue-100 text-blue-800 border-blue-200'
   },
@@ -70,7 +70,7 @@ export const userProfiles: UserProfile[] = [
     studentGrr: '84920193',
     studentId: 'stu-1',
     avatarUrl: APP_IMAGES.tech2,
-    description: 'Visão do aluno: cadastro e gestão das suas próprias marmitas de instrumental, acompanhamento de ciclos de esterilização na CME, emissão de etiquetas com QR Code e cartão digital.',
+    description: 'Visão do aluno: cadastro e gestão dos seus kits com marmitas e pacotes cirúrgicos, acompanhamento de ciclos no setor de esterilização e apresentação no balcão.',
     allowedTabs: ['student_space', 'student_available', 'help'],
     badgeColor: 'bg-blue-100 text-blue-800 border-blue-200'
   }
@@ -83,6 +83,7 @@ export const initialStudents: Student[] = [
     email: "a.rostova@aluno.odontologia.edu.br",
     grr: "84920193",
     code: "ARO",
+    numericPassword: 104,
     status: "Active",
     course: "Odontologia - Cirurgia Clínica 4º Ano",
     avatarInitials: "AR",
@@ -104,13 +105,13 @@ export const initialStudents: Student[] = [
         id: "h2",
         equipmentName: "Kit Rotatório Endodôntico",
         timeframe: "12 de Outubro, 09:15 - 11:00",
-        note: "Higienizado e encaminhado para re-autoclavação."
+        note: "Higienizado e encaminhado para re-esterilização."
       },
       {
         id: "h3",
         equipmentName: "Marmita Periodontia Básica #02",
         timeframe: "08 de Outubro, 10:00 - 12:45",
-        note: "Conformidade sanitária verificada pela CME."
+        note: "Conformidade sanitária verificada pelo setor de esterilização."
       }
     ]
   },
@@ -120,6 +121,7 @@ export const initialStudents: Student[] = [
     email: "m.kline@aluno.odontologia.edu.br",
     grr: "84920194",
     code: "MKL",
+    numericPassword: 215,
     status: "Active",
     course: "Odontologia - Periodontia 3º Ano",
     avatarInitials: "MK",
@@ -138,6 +140,7 @@ export const initialStudents: Student[] = [
     email: "e.jenco@aluno.odontologia.edu.br",
     grr: "84920112",
     code: "EJE",
+    numericPassword: 89,
     status: "Inactive",
     course: "Odontologia - Especialização Ortodontia",
     avatarInitials: "EJ",
@@ -156,6 +159,7 @@ export const initialStudents: Student[] = [
     email: "t.cruz@aluno.odontologia.edu.br",
     grr: "84920205",
     code: "TCR",
+    numericPassword: 312,
     status: "Active",
     course: "Odontologia - Dentística Restauradora 4º Ano",
     avatarInitials: "TC",
@@ -181,6 +185,7 @@ export const initialStudents: Student[] = [
     email: "s.wells@aluno.odontologia.edu.br",
     grr: "84920288",
     code: "SWE",
+    numericPassword: 77,
     status: "Active",
     course: "Odontologia - Patologia Bucal 2º Ano",
     avatarInitials: "SW",
@@ -206,6 +211,7 @@ export const initialStudents: Student[] = [
     email: "mariana.silva@aluno.odontologia.edu.br",
     grr: "20230192",
     code: "MCS",
+    numericPassword: 142,
     status: "Active",
     course: "Odontologia - Clínica Integrada 3º Ano",
     avatarInitials: "MC",
@@ -224,6 +230,7 @@ export const initialStudents: Student[] = [
     email: "j.santos@aluno.odontologia.edu.br",
     grr: "20210045",
     code: "JPS",
+    numericPassword: 388,
     status: "Active",
     course: "Odontologia - Prótese Dentária 5º Ano",
     avatarInitials: "JS",
@@ -242,6 +249,7 @@ export const initialStudents: Student[] = [
     email: "a.carolina@aluno.odontologia.edu.br",
     grr: "20220891",
     code: "ACR",
+    numericPassword: 64,
     status: "Active",
     course: "Odontologia - Odontopediatria 3º Ano",
     avatarInitials: "AC",
@@ -250,7 +258,7 @@ export const initialStudents: Student[] = [
         id: "h9",
         equipmentName: "Marmita Odontopediatria Restauradora K-C405",
         timeframe: "Hoje, 07:30 - 09:35",
-        note: "Devolvida íntegra na CME. Esterilização aprovada."
+        note: "Devolvida íntegra no setor de esterilização. Esterilização aprovada."
       }
     ]
   }
@@ -274,14 +282,14 @@ export const initialKits: Kit[] = [
     colorTag: "Azul",
     boxMaterial: "Inox Perfurado 20x10x5",
     items: ["Cabo de Bisturi nº 3", "Pinça Anatômica 1x2", "Tesoura Metzenbaum", "Porta-agulhas Mayo-Hegar"],
-    notes: "Autoclave ciclo #4102. Indicador biológico negativado.",
+    notes: "Ciclo de esterilização #4102. Indicador biológico negativado.",
     autoclaveCycleId: "CICLO-4102",
     biologicalTestResult: "Negativo (Aprovado)"
   },
   {
     id: "MAR-MCS-01",
-    code: "MAR-MCS-01",
-    name: "Marmita de Dentística Restauradora - Mariana",
+    code: "KIT-MCS-01",
+    name: "Kit de Dentística Restauradora - Mariana",
     category: "Dentística",
     status: "Ready",
     lastSterilized: "14 de Outubro",
@@ -291,15 +299,17 @@ export const initialKits: Kit[] = [
     ownerStudentName: "Mariana Costa Silva",
     colorTag: "Verde",
     boxMaterial: "Inox Perfurado 20x10x5",
+    marmitasCount: 1,
+    pacotesCount: 2,
     items: ["Espelho Bucal Plano nº 5", "Sonda Exploradora nº 23/17", "Pinça de Algodão Clínica", "Esculpidor Hollemback 3S", "Espátula de Inserção nº 1", "Brunidor Oval nº 29"],
-    notes: "Kit completo cadastrado pela aluna. Gravação MCS em todas as peças.",
+    notes: "Kit completo com 1 marmita rígida de dentística e 2 pacotes moles com aventais.",
     autoclaveCycleId: "CICLO-4106",
     biologicalTestResult: "Negativo (Aprovado)"
   },
   {
     id: "MAR-MCS-02",
-    code: "MAR-MCS-02",
-    name: "Marmita de Periodontia Clínica - Mariana",
+    code: "KIT-MCS-02",
+    name: "Kit de Periodontia Clínica - Mariana",
     category: "Periodontia",
     status: "Ready",
     lastSterilized: "11 de Outubro",
@@ -309,46 +319,88 @@ export const initialKits: Kit[] = [
     ownerStudentName: "Mariana Costa Silva",
     colorTag: "Azul",
     boxMaterial: "Inox Perfurado 20x10x5",
+    marmitasCount: 2,
+    pacotesCount: 1,
     items: ["Sonda Milimetrada Carolina do Norte (PCPUNC 15)", "Sonda OMS", "Curetas Gracey 5/6, 7/8, 11/12, 13/14", "Pedra de Arkansas para Afiação"],
-    notes: "Esterilizado e selado com integrador químico Classe 5.",
+    notes: "Composto por 2 marmitas de curetas e 1 pacote de campos cirúrgicos.",
     autoclaveCycleId: "CICLO-4100",
     biologicalTestResult: "Negativo (Aprovado)"
   },
   {
     id: "MAR-MCS-03",
-    code: "MAR-MCS-03",
-    name: "Caixa de Isolamento Absoluto & Grampos - Mariana",
-    category: "Dentística",
+    code: "KIT-MCS-03",
+    name: "Kit de Cirurgia Menor & Capas - Mariana",
+    category: "Cirurgia",
     status: "Decontaminated",
-    lastSterilized: "28 de Setembro",
+    lastSterilized: "Em esterilização",
     cyclesLogged: 15,
     validityDays: 0,
     ownerStudentGrr: "20230192",
     ownerStudentName: "Mariana Costa Silva",
     colorTag: "Amarelo",
     boxMaterial: "Caixa Alumínio Anodizado",
-    items: ["Arco de Young Plástico", "Alicate Perfurador de Ainsworth", "Alicate Porta-Grampos Palmer", "Estojo com 8 Grampos (200-209, 212, W8A)"],
-    notes: "Entregue na CME pela aluna hoje às 07:45. Aguardando entrada na Autoclave Cristófoli 01.",
-    autoclaveCycleId: "CICLO-PENDENTE",
+    marmitasCount: 2,
+    pacotesCount: 2,
+    items: ["Cabos de Bisturi nº 3", "Pinça Anatômica", "Tesoura Metzenbaum", "Campos fenestrados e aventais"],
+    notes: "Entregue no setor de esterilização pela aluna hoje às 07:45. Em processamento na Máquina de Esterilização 01.",
+    autoclaveCycleId: "CICLO-4112",
+    biologicalTestResult: "Pendente"
+  },
+  {
+    id: "MAR-MCS-04",
+    code: "KIT-MCS-04",
+    name: "Kit de Isolamento & Endodontia - Mariana",
+    category: "Endodontia",
+    status: "Aguardando Liberação",
+    lastSterilized: "Aguardando conferência",
+    cyclesLogged: 0,
+    validityDays: 15,
+    ownerStudentGrr: "20230192",
+    ownerStudentName: "Mariana Costa Silva",
+    colorTag: "Verde",
+    boxMaterial: "Inox Perfurado",
+    marmitasCount: 1,
+    pacotesCount: 1,
+    items: ["Arco de Young", "Alicate Perfurador", "Grampos 200-209", "Campos de isolamento"],
+    notes: "Enviado pelo acadêmico via portal. Aguardando conferência no balcão de liberação.",
+    autoclaveCycleId: "PENDENTE-CONFERENCIA",
     biologicalTestResult: "Pendente"
   },
   {
     id: "KIT-MAR-0891",
-    code: "KIT-MAR-0891",
-    name: "Marmita Exame Clínico Básico - Mariana",
+    code: "KIT-MCS-05",
+    name: "Kit Exame Clínico Básico - Mariana",
     category: "Geral",
-    status: "Expiring",
-    lastSterilized: "01 de Outubro",
+    status: "Expired",
+    lastSterilized: "15 de Setembro",
     cyclesLogged: 112,
-    validityDays: 2,
+    validityDays: 0,
     ownerStudentGrr: "20230192",
     ownerStudentName: "Mariana Costa Silva",
     colorTag: "Inox",
     boxMaterial: "Inox Perfurado 18x8x4",
+    marmitasCount: 1,
+    pacotesCount: 1,
     items: ["Espelho Bucal nº 5", "Sonda Exploradora nº 23/17", "Pinça de Algodão", "Sonda Periodontal OMS"],
-    notes: "Próximo do limite de 15 dias. Programar para re-autoclavação.",
+    notes: "Validade de esterilização expirada (15 dias excedidos). Necessita reesterilização.",
     autoclaveCycleId: "CICLO-4089",
     biologicalTestResult: "Negativo (Aprovado)"
+  },
+  {
+    id: "KIT-MCS-06",
+    code: "KIT-MCS-06",
+    name: "Kit Clínico KIT-MCS-06",
+    status: "Reprovado",
+    rejectionReason: "Embalagem de grau cirúrgico com fita descolada e indícios de umidade externa na caixa.",
+    lastSterilized: "Não esterilizado",
+    cyclesLogged: 0,
+    validityDays: 0,
+    ownerStudentGrr: "20230192",
+    ownerStudentName: "Mariana Costa Silva",
+    marmitasCount: 1,
+    pacotesCount: 1,
+    notes: "Reprovado no balcão: Embalagem de grau cirúrgico com fita descolada e indícios de umidade externa na caixa. Ajustar antes de reenviar.",
+    biologicalTestResult: "Pendente"
   },
   {
     id: "KIT-MAR-1102",
@@ -364,7 +416,7 @@ export const initialKits: Kit[] = [
     colorTag: "Vermelho",
     boxMaterial: "Inox Perfurado 20x10x5",
     items: ["Fórceps Universal Adulto nº 150", "Fórceps Universal nº 151", "Alavanca Reta nº 301", "Par de Alavancas Cryer"],
-    notes: "Validade expirada. Encaminhar para descontaminação e autoclave.",
+    notes: "Validade expirada. Encaminhar para descontaminação e esterilização.",
     autoclaveCycleId: "CICLO-4050",
     biologicalTestResult: "Pendente"
   },
@@ -439,7 +491,7 @@ export const initialKits: Kit[] = [
     colorTag: "Amarelo",
     boxMaterial: "Inox Perfurado 18x8x4",
     items: ["Grampos Infantis de Isolamento Absoluto", "Alicate Conformador de Coroas", "Porta-Matriz Infantil"],
-    notes: "Recém-devolvido, inspecionado e revalidado na CME.",
+    notes: "Recém-devolvido, inspecionado e revalidado no setor de esterilização.",
     autoclaveCycleId: "CICLO-4105",
     biologicalTestResult: "Negativo (Aprovado)"
   },
@@ -457,7 +509,7 @@ export const initialKits: Kit[] = [
     colorTag: "Inox",
     boxMaterial: "Inox Perfurado 20x10x5",
     items: ["Saca-Coroas Pneumático", "Pinça Miller Articuladora", "Recortadores de Margem Gengival"],
-    notes: "Vence amanhã. Agendado para ciclo matutino da autoclave.",
+    notes: "Vence amanhã. Agendado para ciclo matutino de esterilização.",
     autoclaveCycleId: "CICLO-4078",
     biologicalTestResult: "Negativo (Aprovado)"
   },
@@ -504,7 +556,7 @@ export const initialTransactions: Transaction[] = [
     grrCode: "20220891",
     status: "STERILE",
     operatorName: "Juliana Santos (Balcão)",
-    notes: "Devolvido sem avarias. Encaminhado para autoclave."
+    notes: "Devolvido sem avarias. Encaminhado para esterilização."
   },
   {
     id: "tx-3",
@@ -527,7 +579,7 @@ export const initialTransactions: Transaction[] = [
     studentName: "Alina Rostova",
     grrCode: "84920193",
     status: "IN USE",
-    operatorName: "Carlos Mendes (CME)",
+    operatorName: "Carlos Mendes (Esterilização)",
     notes: "Retirada para cirurgia de terceiro molar."
   },
   {
@@ -550,7 +602,7 @@ export const initialAlerts: ActionAlert[] = [
     kitId: "KIT-MAR-1102",
     daysLeft: 0,
     reason: "Validade de esterilização atingiu 0 dias. Proibido uso clínico.",
-    protocolAction: "Encaminhar para Lavagem e Autoclave",
+    protocolAction: "Encaminhar para Lavagem e Esterilização",
     severity: "error"
   },
   {
@@ -558,7 +610,7 @@ export const initialAlerts: ActionAlert[] = [
     kitId: "KIT-8942-A",
     daysLeft: 1,
     reason: "Marmita vence em menos de 24 horas. Reprocessar preventivamente.",
-    protocolAction: "Re-esterilizar na CME",
+    protocolAction: "Re-esterilizar no Setor de Esterilização",
     severity: "warning"
   },
   {
@@ -566,7 +618,7 @@ export const initialAlerts: ActionAlert[] = [
     kitId: "KIT-MAR-0891",
     daysLeft: 2,
     reason: "Marmita com 2 dias de esterilidade restante.",
-    protocolAction: "Agendar Ciclo de Autoclave",
+    protocolAction: "Agendar Ciclo de Esterilização",
     severity: "warning"
   }
 ];
@@ -575,7 +627,7 @@ export const initialAutoclaveCycles: AutoclaveCycleRecord[] = [
   {
     id: "CICLO-4106",
     cycleNumber: 4106,
-    chamberId: "AUTOCLAVE-CRISTOFOLI-01",
+    chamberId: "ESTERILIZADORA-01",
     operator: "Carlos Mendes",
     startTime: "Hoje, 07:15",
     durationMinutes: 45,
@@ -589,7 +641,7 @@ export const initialAutoclaveCycles: AutoclaveCycleRecord[] = [
   {
     id: "CICLO-4105",
     cycleNumber: 4105,
-    chamberId: "AUTOCLAVE-CRISTOFOLI-02",
+    chamberId: "ESTERILIZADORA-02",
     operator: "Carlos Mendes",
     startTime: "Ontem, 16:30",
     durationMinutes: 45,
@@ -603,7 +655,7 @@ export const initialAutoclaveCycles: AutoclaveCycleRecord[] = [
   {
     id: "CICLO-4104",
     cycleNumber: 4104,
-    chamberId: "AUTOCLAVE-CRISTOFOLI-01",
+    chamberId: "ESTERILIZADORA-01",
     operator: "Carlos Mendes",
     startTime: "Ontem, 11:00",
     durationMinutes: 45,
@@ -619,16 +671,16 @@ export const initialAutoclaveCycles: AutoclaveCycleRecord[] = [
 export const docArticles: DocArticle[] = [
   {
     id: "art-1",
-    title: "Validação de Ciclo de Autoclave e Indicadores Biológicos",
-    category: "Protocolos CME",
+    title: "Validação de Ciclo de Esterilização e Indicadores Biológicos",
+    category: "Protocolos de Esterilização",
     updatedAt: "Há 2 dias",
     readTime: "3 min de leitura",
     summary: "Procedimento Operacional Padrão (POP) para leitura de ampolas de Geobacillus stearothermophilus e liberação do lote de marmitas.",
     content: [
       "1. Certifique-se de que a ampola do indicador biológico incubou por 24h na incubadora a 56°C sem mudança para cor amarela (resultado negativo/aprovado).",
       "2. Verifique se as fitas zebradas e integradores químicos Classe 5 viraram completamente para a cor preta/escura.",
-      "3. Acesse o módulo 'Central de Esterilização' e selecione o código da Marmita.",
-      "4. Clique em 'Registrar Autoclavação' para renovar o prazo padrão de 15 dias de validade e gerar o selo digital de rastreabilidade."
+      "3. Acesse o módulo 'Setor de Esterilização' e selecione o código da Marmita.",
+      "4. Clique em 'Registrar Esterilização' para renovar o prazo padrão de 15 dias de validade e gerar o selo digital de rastreabilidade."
     ]
   },
   {
@@ -653,10 +705,10 @@ export const docArticles: DocArticle[] = [
     readTime: "2 min de leitura",
     summary: "Passo a passo para recepção de materiais pós-clínica, expurgo e lavagem ultrassônica antes do empacotamento em papel grau cirúrgico.",
     content: [
-      "1. O aluno deve entregar a marmita fechada no setor de expurgo da CME.",
+      "1. O aluno deve entregar a marmita fechada no setor de expurgo e esterilização.",
       "2. A equipe confere a quantidade de peças conforme o checklist da caixa.",
       "3. O material passa por imersão em detergente enzimático e cuba ultrassônica por 15 minutos.",
-      "4. Após secagem rigorosa, os instrumentais são acondicionados e encaminhados para a autoclave."
+      "4. Após secagem rigorosa, os instrumentais são acondicionados e encaminhados para a máquina de esterilização."
     ]
   },
   {
@@ -665,7 +717,7 @@ export const docArticles: DocArticle[] = [
     category: "Auditoria & Relatórios",
     updatedAt: "Há 1 mês",
     readTime: "5 min de leitura",
-    summary: "Como exportar o histórico de ciclos de autoclave, registros de temperatura e rastreabilidade para inspeção da Anvisa e comissão de biossegurança.",
+    summary: "Como exportar o histórico de ciclos de esterilização, registros de temperatura e rastreabilidade para inspeção da Anvisa e comissão de biossegurança.",
     content: [
       "1. Navegue até a aba 'Relatórios & Auditoria'.",
       "2. Selecione o período desejado (Diário, Semanal ou Mensal).",
@@ -682,11 +734,11 @@ export const videoTutorials: VideoTutorial[] = [
     duration: "03:45",
     description: "Demonstração prática da correta disposição dos instrumentais, fita termossensível e selagem em papel grau cirúrgico.",
     thumbnailUrl: APP_IMAGES.tutorialBatchKit,
-    category: "Gestão de CME"
+    category: "Gestão de Esterilização"
   },
   {
     id: "vid-2",
-    title: "Operação da Autoclave e Monitoramento de Pressão e Temperatura",
+    title: "Operação da Máquina de Esterilização e Monitoramento de Pressão e Temperatura",
     duration: "05:12",
     description: "Guia completo sobre os parâmetros de 134°C a 2.1 bar, teste de esporos biológicos e contagem regressiva de validade.",
     thumbnailUrl: APP_IMAGES.tutorialSterilization,

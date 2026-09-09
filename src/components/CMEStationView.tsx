@@ -17,7 +17,7 @@ export const CMEStationView: React.FC<CMEStationViewProps> = ({
 }) => {
   const [cycles, setCycles] = useState<AutoclaveCycleRecord[]>(initialAutoclaveCycles);
   const [isNewCycleModalOpen, setIsNewCycleModalOpen] = useState(false);
-  const [selectedChamber, setSelectedChamber] = useState('AUTOCLAVE-CRISTOFOLI-01');
+  const [selectedChamber, setSelectedChamber] = useState('ESTERILIZADORA-01');
   const [selectedKitsToAutoclave, setSelectedKitsToAutoclave] = useState<string[]>([]);
   const [bioResult, setBioResult] = useState<'Aprovado (Negativo)' | 'Em Incubação' | 'Falha'>('Aprovado (Negativo)');
   const [class5Checked, setClass5Checked] = useState(true);
@@ -68,14 +68,14 @@ export const CMEStationView: React.FC<CMEStationViewProps> = ({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-semibold uppercase tracking-wider">
-              Central de Material e Esterilização (CME)
+              Setor de Esterilização de Materiais
             </span>
             <span className="text-[12px] text-slate-500 font-medium">
               Operador: {activeProfile.name}
             </span>
           </div>
           <h2 className="text-[26px] md:text-[30px] font-bold text-slate-900 tracking-tight">
-            Estação de Esterilização &amp; Monitoramento de Autoclave
+            Setor de Esterilização &amp; Monitoramento de Ciclos
           </h2>
           <p className="text-[14px] text-slate-500 mt-0.5">
             Controle de lotes, validação de indicadores biológicos e renovação de validade das marmitas.
@@ -87,7 +87,7 @@ export const CMEStationView: React.FC<CMEStationViewProps> = ({
           className="bg-slate-900 text-white px-5 py-2.5 rounded-xl text-[13px] font-medium flex items-center gap-2 hover:bg-slate-800 transition-all shadow-xs cursor-pointer active:scale-98"
         >
           <span className="material-symbols-outlined text-[19px] text-emerald-400">precision_manufacturing</span>
-          <span>Novo Ciclo de Autoclave</span>
+          <span>Novo Ciclo de Esterilização</span>
         </button>
       </div>
 
@@ -98,11 +98,11 @@ export const CMEStationView: React.FC<CMEStationViewProps> = ({
         </div>
       )}
 
-      {/* Autoclave Status & Chamber Cards */}
+      {/* Status & Chamber Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-xs">
           <div className="flex justify-between items-center text-slate-500 mb-2">
-            <span className="text-[11.5px] font-semibold uppercase tracking-wider">Autoclave 01 (Cristófoli)</span>
+            <span className="text-[11.5px] font-semibold uppercase tracking-wider">Máquina 01 (Esterilização)</span>
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
           </div>
           <div className="text-[24px] font-bold text-slate-900">134 °C • 2.1 bar</div>
@@ -142,7 +142,7 @@ export const CMEStationView: React.FC<CMEStationViewProps> = ({
               Marmitas na Fila de Descontaminação &amp; Re-esterilização
             </h3>
             <p className="text-[12.5px] text-slate-500">
-              Kits que necessitam de ciclo de autoclave para renovar os 15 dias de esterilidade.
+              Kits que necessitam de ciclo de esterilização para renovar os 15 dias de validade.
             </p>
           </div>
           <span className="px-3 py-1 bg-amber-50 text-amber-800 text-[12px] font-semibold rounded-full border border-amber-200">
@@ -197,12 +197,12 @@ export const CMEStationView: React.FC<CMEStationViewProps> = ({
         )}
       </div>
 
-      {/* Histórico de Ciclos de Autoclave */}
+      {/* Histórico de Ciclos de Esterilização */}
       <div className="bg-white border border-slate-200/80 rounded-3xl overflow-hidden shadow-xs">
         <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
           <div>
             <h3 className="text-[17px] font-bold text-slate-900">
-              Registro Oficial de Ciclos da Autoclave (RDC 15 / Anvisa)
+              Registro Oficial de Ciclos de Esterilização (RDC 15 / Anvisa)
             </h3>
             <p className="text-[12.5px] text-slate-500 mt-0.5">
               Rastreabilidade de lotes, temperatura, pressão e liberação biológica.
@@ -215,7 +215,7 @@ export const CMEStationView: React.FC<CMEStationViewProps> = ({
             <thead className="bg-slate-50/80 border-b border-slate-200/70">
               <tr>
                 <th className="py-3 px-5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Lote / Ciclo</th>
-                <th className="py-3 px-5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Autoclave</th>
+                <th className="py-3 px-5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Máquina</th>
                 <th className="py-3 px-5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Data / Hora</th>
                 <th className="py-3 px-5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Operador</th>
                 <th className="py-3 px-5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Marmitas</th>
@@ -265,7 +265,7 @@ export const CMEStationView: React.FC<CMEStationViewProps> = ({
             <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/70 flex justify-between items-center">
               <div className="flex items-center gap-2.5 text-slate-900">
                 <span className="material-symbols-outlined text-[22px] text-emerald-600">precision_manufacturing</span>
-                <h3 className="text-[17px] font-bold">Registrar Novo Lote de Autoclave</h3>
+                <h3 className="text-[17px] font-bold">Registrar Novo Lote de Esterilização</h3>
               </div>
               <button
                 onClick={() => setIsNewCycleModalOpen(false)}
@@ -278,15 +278,15 @@ export const CMEStationView: React.FC<CMEStationViewProps> = ({
             <form onSubmit={handleStartCycle} className="p-6 space-y-4">
               <div>
                 <label className="block text-[12px] font-semibold text-slate-700 mb-1.5">
-                  Câmara de Esterilização / Autoclave *
+                  Máquina / Câmara de Esterilização *
                 </label>
                 <select
                   value={selectedChamber}
                   onChange={(e) => setSelectedChamber(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-[13px] text-slate-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-hidden cursor-pointer"
                 >
-                  <option value="AUTOCLAVE-CRISTOFOLI-01">AUTOCLAVE-CRISTOFOLI-01 (Câmara Principal)</option>
-                  <option value="AUTOCLAVE-CRISTOFOLI-02">AUTOCLAVE-CRISTOFOLI-02 (Câmara Auxiliar)</option>
+                  <option value="MÁQUINA-01">Máquina de Esterilização 01 (Câmara Principal)</option>
+                  <option value="MÁQUINA-02">Máquina de Esterilização 02 (Câmara Auxiliar)</option>
                 </select>
               </div>
 

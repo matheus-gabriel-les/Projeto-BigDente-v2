@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { APP_IMAGES } from '../data/mockData';
 
 export const SettingsView: React.FC = () => {
-  const [autoclaveChamber, setAutoclaveChamber] = useState('AUTOCLAVE-CÂMARA-04');
+  const [autoclaveChamber, setAutoclaveChamber] = useState('MÁQUINA-ESTERILIZAÇÃO-01');
   const [expiryDays, setExpiryDays] = useState(15);
   const [warningThreshold, setWarningThreshold] = useState(3);
   const [requireBioIndicator, setRequireBioIndicator] = useState(true);
@@ -24,10 +24,10 @@ export const SettingsView: React.FC = () => {
           </span>
         </div>
         <h2 className="text-[26px] md:text-[30px] font-bold text-slate-900 tracking-tight">
-          Configurações do Laboratório &amp; CME
+          Configurações do Laboratório &amp; Setor de Esterilização
         </h2>
         <p className="text-[14px] text-slate-500 mt-0.5">
-          Parâmetros de validade das marmitas, protocolos da ANVISA e integração das autoclaves.
+          Parâmetros de validade das marmitas, protocolos da ANVISA e equipamentos de esterilização.
         </p>
       </div>
 
@@ -91,7 +91,7 @@ export const SettingsView: React.FC = () => {
                 className="w-4 h-4 text-blue-600 rounded-sm focus:ring-blue-500 border-slate-300"
               />
               <span className="text-[13px] text-slate-700 font-medium">
-                Exigir confirmação de Indicador Biológico (Geobacillus stearothermophilus) a cada lote de autoclave
+                Exigir confirmação de Indicador Biológico (Geobacillus stearothermophilus) a cada lote de esterilização
               </span>
             </label>
 
@@ -109,16 +109,16 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* Hardware & Autoclave Station Card */}
+        {/* Hardware & Esterilização Station Card */}
         <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-xs space-y-4">
           <h3 className="text-[16px] font-semibold text-slate-900 flex items-center gap-2.5 border-b border-slate-100 pb-3.5">
             <span className="material-symbols-outlined text-blue-600">precision_manufacturing</span>
-            <span>Estação de Autoclave &amp; Leitor Óptico</span>
+            <span>Máquinas de Esterilização &amp; Leitor Óptico</span>
           </h3>
 
           <div>
             <label className="block text-[12px] font-semibold text-slate-700 mb-1.5">
-              Identificador da Autoclave Padrão
+              Identificador da Máquina de Esterilização Padrão
             </label>
             <input
               type="text"
@@ -145,7 +145,7 @@ export const SettingsView: React.FC = () => {
             />
             <div>
               <h4 className="text-[16px] font-semibold text-slate-900">Dr. E. Vance</h4>
-              <p className="text-[13px] text-slate-500">Diretor Clínico &amp; Responsável Técnico pelo CME</p>
+              <p className="text-[13px] text-slate-500">Diretor Clínico &amp; Responsável Técnico pela Esterilização</p>
               <p className="text-[11px] font-mono text-slate-400 mt-0.5">CRO/SP: 89024 | ID: SUP-VANCE</p>
             </div>
           </div>
